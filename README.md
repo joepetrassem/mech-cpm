@@ -274,5 +274,4 @@ If you prefer not to use the command line, **GitHub Desktop** (<https://desktop.
 If you use this code, please cite the paper (see `CITATION.cff`).
 
 ## License
-
-TODO: add a licence (for example MIT or BSD-3-Clause) before making the repository public.
+MIT License
