@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the accompanying paper."
+title: "MechoCPM: Coupled chemo-mechanical framework for phase-changing electrodes"
+authors:
+  - family-names: "Petrassem de Sousa"
+    given-names: "Joseph"
+  - family-names: "Clarke"
+    given-names: "Will"
+  - family-names: "Galvis"
+    given-names: "Andres"
+  - family-names: "Sahu"
+    given-names: "Smita"
+  - family-names: "Foster"
+    given-names: "Jamie M."
+preferred-citation:
+  type: article
+  title: "Coupled chemo-mechanical framework for phase-changing electrodes"
+  journal: "Journal of The Electrochemical Society"
+  authors:
+    - family-names: "Petrassem de Sousa"
+      given-names: "Joseph"
+    - family-names: "Clarke"
+      given-names: "Will"
+    - family-names: "Galvis"
+      given-names: "Andres"
+    - family-names: "Sahu"
+      given-names: "Smita"
+    - family-names: "Foster"
+      given-names: "Jamie M."
+  year: 2026
+  # doi: "10.1149/TODO"   # add once the paper is published

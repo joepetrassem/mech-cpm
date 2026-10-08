@@ -1,0 +1,17 @@
+# MATLAB
+*.asv
+*.m~
+*.mex*
+slprj/
+*.slxc
+codegen/
+
+# Simulation output
+results/
+*.mat
+!data/*.mat
+!tests/data/*.mat
+
+# OS
+.DS_Store
+Thumbs.db
