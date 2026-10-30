@@ -10,4 +10,14 @@ sigma_ys = [0, 0.2, 0.4, 0.8];
     'Lambda', 0.33, 'n_groups', 10, 'c_rate', 0.01, 'verbose', false);
 
 plot_voltage_soc(sols, labels);
+plot_voltage_time(sols, labels);
+s = voltage_summary(sols, labels);
+
+% Increase of the gap at SoC = 0.5 relative to sigma_y = 0, against 2*sigma_y*R_g*T/F
+VT = 1000*sols{1}.params.R_gT/sols{1}.params.F;
+fprintf('\nGap increase at SoC = 0.5 [mV]\n');
+for i = 1:numel(s)
+    fprintf('  sigma_y = %-4g  simulated %6.2f   predicted %6.2f\n', sigma_ys(i), ...
+        s(i).gap(2) - s(1).gap(2), 2*sigma_ys(i)*VT);
+end
 plot_external_stress(sols{end});

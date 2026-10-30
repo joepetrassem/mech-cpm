@@ -22,6 +22,9 @@ function ocv = compute_ocv_hysteresis(params, sig_ext, n_points)
 %     ocv.mu_lith    n_sig x n_points     lithiation branch
 %     ocv.mu_delith  n_sig x n_points     delithiation branch
 %     ocv.mu_mixed   n_sig x n_points     mixed-phase (equilibrium) curve
+%     ocv.Phi_lith, ocv.Phi_delith, ocv.Phi_mixed
+%                    n_sig x n_points     equilibrium electrode potential
+%                                         Phi = -mu*R_g*T/F [mV] of each branch
 %     ocv.sig_ext, ocv.c_b, ocv.c_sp, ocv.params
 
 if nargin < 1 || isempty(params),   params = default_parameters(); end
@@ -55,6 +58,10 @@ ocv.mu_chem   = mu_chem(c_avg);
 ocv.mu_lith   = mu_lith;
 ocv.mu_delith = mu_delith;
 ocv.mu_mixed  = mu_mixed;
+VT = 1000*params.R_gT/params.F;          % thermal voltage [mV]
+ocv.Phi_lith   = -VT*mu_lith;
+ocv.Phi_delith = -VT*mu_delith;
+ocv.Phi_mixed  = -VT*mu_mixed;
 ocv.sig_ext   = sig_ext;
 ocv.c_b       = params.c_b;
 ocv.c_sp      = params.c_sp;

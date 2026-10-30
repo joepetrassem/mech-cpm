@@ -10,4 +10,6 @@ Lambdas = [0, 0.33, 0.66, 1.32];
     'n_groups', 10, 'c_rate', 0.01, 'verbose', false);
 
 plot_voltage_soc(sols, labels);
+plot_voltage_time(sols, labels);
+voltage_summary(sols, labels);
 plot_phase_fraction(sols, labels);
