@@ -1,5 +1,5 @@
 ﻿function figs = plot_results_comparison(sol_no_ext, sol_with_ext)
-%PLOT_RESULTS_COMPARISON Paper-style comparison of two simulations (Figs. 5-7).
+%PLOT_RESULTS_COMPARISON Paper-style comparison of two simulations (paper Figs. 5-7).
 %
 %   figs = PLOT_RESULTS_COMPARISON(sol_no_ext, sol_with_ext) makes two figures:
 %     1. electrode potential Phi [mV] against SoC for the ensemble without

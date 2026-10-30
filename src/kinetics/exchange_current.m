@@ -6,8 +6,8 @@ function jtr = exchange_current(c_av, s, Phi, sig_ext, params)
 %   potential [V] and sig_ext the external radial stresses. Returns a
 %   column vector.
 %
-%       eta = (F*Phi + mu)/(R_g*T)                        (Eq. 75)
-%       j   = 2*I0*sqrt(theta_surf*(1 - theta_surf))*sinh(eta/2)   (Eq. 76)
+%       eta = (F*Phi + mu)/(R_g*T)
+%       j   = 2*I0*sqrt(theta_surf*(1 - theta_surf))*sinh(eta/2)
 %
 %   theta_surf = c_surf/c_m is the surface concentration: c_avg/c_m for a
 %   single-phase particle (s = 0), and the shell binodal point for a

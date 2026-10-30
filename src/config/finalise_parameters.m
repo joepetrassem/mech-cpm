@@ -1,15 +1,23 @@
 function params = finalise_parameters(params)
 %FINALISE_PARAMETERS Compute derived quantities and validate a parameter struct.
 %
-%   Derived fields: nu_bar = nu/(1 - 2*nu)  and  R_gT = R_g*T.
+%   Derived fields:
+%     nu_bar   = nu/(1 - 2*nu)
+%     R_gT     = R_g*T
+%     A_int    = Lambda*(1 + 3*nu_bar)/(3*(1 + nu_bar))   incompatibility penalty
+%     Lambda_c = 3*(1 + nu_bar)/(1 + 3*nu_bar)            Lambda at which A_int = 1
+%                (for the default mu_chem, min mu_chem' = -2, phase separation
+%                 is suppressed for Lambda >= Lambda_c)
 
-params.nu_bar = params.nu/(1 - 2*params.nu);
-params.R_gT   = params.R_g*params.T;
+params.nu_bar   = params.nu/(1 - 2*params.nu);
+params.R_gT     = params.R_g*params.T;
+params.A_int    = params.Lambda*(1 + 3*params.nu_bar)/(3*(1 + params.nu_bar));
+params.Lambda_c = 3*(1 + params.nu_bar)/(1 + 3*params.nu_bar);
 
 num = @(x, name, attrs) validateattributes(x, {'numeric'}, attrs, 'MechoCPM', name);
 
+num(params.Lambda,   'Lambda',   {'scalar', 'real', 'finite', 'nonnegative'});
 num(params.alpha,    'alpha',    {'scalar', 'real', 'finite', 'positive'});
-num(params.gamma,    'gamma',    {'scalar', 'real', 'finite', 'nonnegative'});
 num(params.sigma_y,  'sigma_y',  {'scalar', 'real', 'finite', 'nonnegative'});
 num(params.nu,       'nu',       {'scalar', 'real', '>', -1, '<', 0.5});
 num(params.k,        'k',        {'scalar', 'real', 'finite', 'nonnegative'});

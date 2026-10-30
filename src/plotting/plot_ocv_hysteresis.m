@@ -1,5 +1,5 @@
 function ax = plot_ocv_hysteresis(ocv, ax, show_branches)
-%PLOT_OCV_HYSTERESIS Plot output of COMPUTE_OCV_HYSTERESIS (Fig. 3a,b).
+%PLOT_OCV_HYSTERESIS Plot output of COMPUTE_OCV_HYSTERESIS (paper Fig. 3).
 %
 %   PLOT_OCV_HYSTERESIS(ocv) plots the single-phase curve mu_chem (dark blue)
 %   and the mixed-phase equilibrium curve for every external stress

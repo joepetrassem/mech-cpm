@@ -10,9 +10,8 @@ setup_paths();
 %% Parameters
 % Every field of default_parameters() can be set here by name.
 sol = run_simulation( ...
-    'alpha',    0.33, ...   % swelling parameter
-    'gamma',    1.0,  ...   % mechanical coupling (0 = no mechanics)
-    'sigma_y',  0.1,  ...   % yield stress of the external shell
+    'Lambda',   0.99, ...   % mechanical coupling (0 = no internal stress; < 1.8)
+    'sigma_y',  0.6,  ...   % scaled yield stress of the external shell, V_c*sigma_y/(R_g*T)
     'n_groups', 20,   ...   % number of particle-size groups
     'c_rate',   0.01);      % C-rate (scalar or one per segment)
 
@@ -24,6 +23,6 @@ plot_phase_fraction(sol);
 
 %% The same run, built from a parameter struct
 % params = default_parameters();
-% params = set_parameters(params, 'gamma', 1.0, 'sigma_y', 0.1, ...
+% params = set_parameters(params, 'Lambda', 0.99, 'sigma_y', 0.6, ...
 %                                 'n_groups', 20, 'c_rate', 0.01);
 % sol = run_simulation(params);

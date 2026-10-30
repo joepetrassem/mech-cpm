@@ -4,7 +4,7 @@
 
 MATLAB code accompanying *Coupled chemo-mechanical framework for phase-changing electrodes* (J. Petrassem de Sousa, W. Clarke, A. Galvis, S. Sahu and J. M. Foster, Journal of The Electrochemical Society, 2026).
 
-The code simulates galvanostatic cycling of an ensemble of electrode particles with a distribution of sizes. Each particle is either single-phase or phase-separated into a core and a shell. Transitions are triggered when the particle's average concentration `c_avg` crosses a spinodal point (single phase -> core-shell) or a binodal point (core-shell -> single phase). Mechanics enters through the coupling parameter `gamma`, which shifts the spinodal and binodal points and adds an elastic contribution to the surface chemo-mechanical potential, and through an external radial stress `sigma_ext` that relaxes towards a plastic yield stress `sigma_y`.
+The code simulates galvanostatic cycling of an ensemble of electrode particles with a distribution of sizes. Each particle is either single-phase or phase-separated into a core and a shell. Transitions are triggered when the particle's average concentration `c_avg` crosses a spinodal point (single phase -> core-shell) or a binodal point (core-shell -> single phase). Mechanics enters in two independent ways, following the scaling of the paper. The mechanical coupling `Lambda`, the ratio of the elastic misfit energy of a fully lithiated particle to the thermal energy, sets the internal incompatibility stress between core and shell: it shifts the spinodal and binodal points and tilts the mixed-phase branch of the potential. An external radial stress `sigma_ext`, which relaxes towards a plastic yield stress `sigma_y`, translates the potential rigidly. Stresses are measured in units of `R_g*T/V_c` (about 0.3 GPa), so the external stress enters the potential with unit coefficient.
 
 Symbols in the code follow the paper (see [Notation](#notation)); equation numbers in the source comments refer to the paper.
 
@@ -30,7 +30,7 @@ Requirements: MATLAB R2019b or newer. The Optimization Toolbox (`fsolve`) is nee
 cd path/to/MechoCPM          % the folder containing this README
 setup_paths();               % adds src/ to the MATLAB path
 
-sol = run_simulation('gamma', 4, 'sigma_y', 0.2, 'n_groups', 20, 'c_rate', 0.01);
+sol = run_simulation('Lambda', 1.32, 'sigma_y', 0.8, 'n_groups', 20, 'c_rate', 0.01);
 
 plot_voltage_soc(sol);
 plot_phase_fraction(sol);
@@ -48,14 +48,15 @@ results = runtests('tests');
 disp(table(results))
 ```
 
-All 19 tests should pass. They check, among other things, that
+All 25 tests should pass. They check, among other things, that
 
-- `mu_chem`, `mu_chem_prime` and `f_chem` are mutually consistent and equal paper Eq. (72);
-- the spinodal points satisfy Eq. (71) and the binodal points satisfy the common-tangent construction at `gamma = 0`;
-- the analytical and grid-search binodal methods agree;
-- `mu_hys` equals the surface potential of Eqs. (20), (64) and (73);
+- `mu_chem`, `mu_chem_prime` and `f_chem` are mutually consistent and equal the paper's `mu_chem`;
+- the spinodal points satisfy the coherent-spinodal condition `mu_chem'(c) + 2*A_int = 0`, exist only for `Lambda < Lambda_c = 1.8`, and the binodal points satisfy the common-tangent construction at `Lambda = 0`;
+- the analytical and grid-search binodal methods agree, and the binodal points do not depend on `c_avg`;
+- `mu_hys` equals the paper's `mu_single` and `mu_sep`, the core and shell potentials are equal at equilibrium, and the external stress shifts the potential by exactly `-sig_ext` for any `Lambda`;
+- old `gamma` inputs are rejected with the conversion to `Lambda`;
 - the DAE initial conditions are consistent and a short cycle conserves charge;
-- **`test_regression_against_original_code`**: the electrode potential, binodal and spinodal points reproduce results saved from the original, pre-reorganisation code (`tests/data/original_code_reference.mat`) for four parameter sets, to within solver tolerance (RMS difference below 10 microvolts).
+- **`test_regression_against_original_code`**: the electrode potential, binodal and spinodal points reproduce results saved from the original, pre-reorganisation code (`tests/data/original_code_reference.mat`) for four parameter sets, to within solver tolerance (RMS difference below 10 microvolts). The reference was made with the previous scaling and is converted with `Lambda = gamma*alpha`, `sigma_y = gamma*sigma_y_old`, which checks that the change of scaling leaves the model unchanged.
 
 **2. Examples.** Run them one at a time (each opens figures) or all at once:
 
@@ -69,13 +70,13 @@ What to expect from each example:
 
 | Example | Runtime | What you should see |
 |---|---|---|
-| `example_01_single_cycle` | seconds | 4 figures: a voltage curve with a plateau and small steps, particle potentials, external stress switching between about -0.1 and +0.1, and the fraction of phase-separated particles rising and falling |
-| `example_02_gamma_sweep` | seconds | 2 figures: voltage curves and phase fractions for `gamma` = 0, 0.5, 1, 2; the plateau shrinks and moves as `gamma` grows |
-| `example_03_sigma_y_sweep` | seconds | larger `sigma_y` widens the gap between lithiation and delithiation voltages (about 20 mV at `sigma_y` = 0 to 30 mV at 0.2 near SoC = 0.5) |
+| `example_01_single_cycle` | seconds | 4 figures: a voltage curve with a plateau and small steps, particle potentials, external stress switching between about -0.6 and +0.6, and the fraction of phase-separated particles rising and falling |
+| `example_02_Lambda_sweep` | seconds | 2 figures: voltage curves and phase fractions for `Lambda` = 0, 0.33, 0.66, 1.32; the plateau shrinks and tilts as `Lambda` grows |
+| `example_03_sigma_y_sweep` | seconds | larger `sigma_y` widens the gap between lithiation and delithiation voltages (about 20 mV at `sigma_y` = 0 to about 60 mV at 0.8 near SoC = 0.5; each unit of `sigma_y` adds `2*R_g*T/F`, about 52 mV) |
 | `example_04_crate_and_particles` | seconds | C-rate sweep, number-of-groups sweep and per-segment C-rates |
-| `example_05_ocv_hysteresis` | 1 s | Paper Fig. 3a (flat plateau at `gamma = 0`), Fig. 3b (sloped mixed-phase line, `gamma = 3`) and Fig. 3d (curves shifted up/down by the external stress). Prints `c_b = [0.0707 0.9293]` for `gamma = 0` and `c_b = [0.1570 0.8430]`, `c_sp = [0.2857 0.7143]` for `gamma = 3` |
-| `example_06_critical_points_vs_gamma` | seconds | Paper Fig. 2: spinodal and binodal points against `gamma`; prints the largest analytical vs grid-search difference (below 1e-3) |
-| `example_07_external_stress_comparison` | 1-2 min | Paper Figs. 4/6 (filling ratio of each particle group) and Fig. 7 (voltage with and without external stress, `gamma = 4`, `sigma_y = 0.2`) |
+| `example_05_ocv_hysteresis` | 1 s | Paper Fig. 3a (flat plateau at `Lambda = 0`), Fig. 3b (sloped mixed-phase line, `Lambda = 0.99`) and Fig. 3d (curves shifted by `sig_ext = -0.6, 0, 0.6`). Prints `c_b = [0.0707 0.9293]` for `Lambda = 0` and `c_b = [0.1570 0.8430]`, `c_sp = [0.2857 0.7143]` for `Lambda = 0.99` |
+| `example_06_critical_points_vs_Lambda` | seconds | Paper Fig. 2: spinodal and binodal points against `Lambda`, with `Lambda_c = 1.8` marked; prints the largest analytical vs grid-search difference (below 1e-3) |
+| `example_07_external_stress_comparison` | 1-2 min | Paper Figs. 4/6 (filling ratio of each particle group) and Fig. 7 (voltage with and without external stress, `Lambda = 1.32`, `sigma_y = 0.8`) |
 
 **3. A quick check by hand.** With no mechanics the binodal points are the classical regular-solution values:
 
@@ -91,22 +92,22 @@ p.c_sp     % 0.2113  0.7887
 All parameters live in a single struct created by `default_parameters()`. Override any of them by name, either directly in `run_simulation` or with `set_parameters`:
 
 ```matlab
-sol = run_simulation('gamma', 2, 'c_rate', 0.05);              % name-value pairs
+sol = run_simulation('Lambda', 0.66, 'c_rate', 0.05);          % name-value pairs
 
 params = default_parameters();
-params = set_parameters(params, 'alpha', 0.4, 'sigma_y', 0.2); % build a struct...
+params = set_parameters(params, 'Lambda', 0.99, 'sigma_y', 0.6); % build a struct...
 sol    = run_simulation(params, 'n_groups', 50);               % ...and override further
 ```
 
-Names are case-insensitive, misspelt names raise an error listing the valid ones, and values are validated before anything is solved. Names from earlier versions of the code (`alph`, `gamm`, `sig_y`, `Far`, `xstar`, `xspin`, `n_total`) are still accepted.
+Names are case-insensitive, misspelt names raise an error listing the valid ones, and values are validated before anything is solved. Names from earlier versions of the code (`alph`, `sig_y`, `Far`, `xstar`, `xspin`, `n_total`) are still accepted. `gamma` (and `gamm`) from the previous scaling raise an error that explains the conversion below.
 
 ### Main parameters
 
 | Name | Default | Paper symbol | Description |
 |---|---|---|---|
-| `alpha` | 0.33 | alpha | Swelling parameter |
-| `gamma` | 0 | gamma | Mechanical coupling parameter (0 switches mechanics off) |
-| `sigma_y` | 0 | sigma_y | Yield stress of the external shell (dimensionless) |
+| `Lambda` | 0 | Lambda | Mechanical coupling, `2*G*V_c^2*c_m/(3*R_g*T)`: elastic misfit energy of a fully lithiated particle over `R_g*T` (0 = no internal stress; phase separation needs `Lambda < Lambda_c = 1.8`) |
+| `sigma_y` | 0 | sigma_y^* | Scaled yield stress of the external shell, `V_c*sigma_y/(R_g*T)` |
+| `alpha` | 0.33 | alpha | Swelling magnitude `V_c*c_m/3`; displacement and strain scale only, does not affect the electrochemistry |
 | `nu` | 0.25 | nu | Poisson ratio; `nu_bar = nu/(1-2*nu)` (= 0.5) is derived |
 | `n_groups` | 100 | n | Number of particle-size groups |
 | `c_rate` | 0.002 | | C-rate; a scalar, or one value per protocol segment |
@@ -120,8 +121,8 @@ Names are case-insensitive, misspelt names raise an error listing the valid ones
 | `size_distribution` | `'uniform'` | `'uniform'` or `'lognormal'` |
 | `N_total` | 1e13 | Total number of particles N (only rescales capacity and current) |
 | `rest_time` | 100 s | Open-circuit rest before cycling |
-| `k` | 0.01 1/s | Relaxation rate of the external stress, Eq. (78) |
-| `u0` | 1e-5 A | Current scale in sigma_ideal, Eq. (79) |
+| `k` | 0.01 1/s | Relaxation rate of the external stress |
+| `u0` | 1e-5 A | Current scale in sigma_ideal |
 | `I0` | 1 A/m^2 | Exchange current density |
 | `c_m` | 2.7e5 mol/m^3 | Maximum concentration |
 | `F`, `R_g`, `T` | 96500, 8.314, 300 | Faraday constant, gas constant, temperature |
@@ -133,10 +134,24 @@ Names are case-insensitive, misspelt names raise an error listing the valid ones
 | `tau_I_default`, `tau_I_reversal` | 2 s, 10 s | Time constants of the current ramp between blocks |
 | `verbose` | `true` | Print progress |
 
+Derived (read-only) fields: `nu_bar = nu/(1-2*nu)`, `R_gT = R_g*T`, the incompatibility penalty `A_int = Lambda*(1+3*nu_bar)/(3*(1+nu_bar))` and the critical coupling `Lambda_c = 3*(1+nu_bar)/(1+3*nu_bar)`.
+
+### Converting from the previous scaling
+
+Earlier versions used `gamma = 2*G*V_c/(R_g*T)` and measured stresses in units of `2*G`. The model is unchanged; only the parameters are regrouped:
+
+| Previous | Now | Paper values |
+|---|---|---|
+| `gamma` | `Lambda = gamma*alpha` | `gamma = 3, 4` -> `Lambda = 0.99, 1.32` |
+| `sigma_y` | `sigma_y = gamma*sigma_y_old` | `gamma = 4, sigma_y = 0.2` -> `sigma_y = 0.8` |
+| `mu = mu_chem - gamma*sig_ext` | `mu = mu_chem - sig_ext` | |
+
+With the new scaling the external stress acts even when `Lambda = 0`, which the previous form (where `gamma = 0` also removed the external stress) could not express.
+
 ### Parameter sweeps
 
 ```matlab
-[sols, labels] = run_parameter_sweep('gamma', [0 0.5 1 2], 'n_groups', 10);
+[sols, labels] = run_parameter_sweep('Lambda', [0 0.33 0.66 1.32], 'n_groups', 10);
 plot_voltage_soc(sols, labels);
 ```
 
@@ -146,40 +161,41 @@ The binodal points `c_b = [c_b1, c_b2]` are the core and shell concentrations th
 
 | Method | What it does | Needs |
 |---|---|---|
-| `'analytical'` (default) | Solves the stationarity conditions, Eqs. (59)-(62), with `fsolve` | Optimization Toolbox |
-| `'gridsearch'` | Minimises the Gibbs free energy by brute force over a grid of core and shell concentrations | nothing extra |
+| `'analytical'` (default) | Solves the reduced stationarity conditions (paper, Appendix D) with `fsolve` | Optimization Toolbox |
+| `'gridsearch'` | Minimises `G = psi*g_chem(c_c) + (1-psi)*g_chem(c_s) + A_int*psi*(1-psi)*(c_s-c_c)^2` by brute force over a grid of core and shell concentrations | nothing extra |
 | `'both'` | Computes both and compares them; warns and returns the grid result if they differ by more than the tolerance | Optimization Toolbox |
 
 ```matlab
-p = set_parameters(default_parameters(), 'gamma', 3);
+p = set_parameters(default_parameters(), 'Lambda', 0.99);
 c_b = find_binodal_points(p);                                   % analytical
 c_b = find_binodal_points(p, 'Method', 'gridsearch');
 [c_b, info] = find_binodal_points(p, 'Method', 'both', 'Verbose', true);
 
-sol = run_simulation('gamma', 3, 'binodal_method', 'both');     % choose it for a simulation
+sol = run_simulation('Lambda', 0.99, 'binodal_method', 'both'); % choose it for a simulation
 ```
 
-The spinodal points `c_sp = [c_s1, c_s2]` come from the stability condition, Eq. (71), in `find_spinodal_points`. For `gamma` larger than about 5.4 (with the default `alpha`) no spinodal points exist: phase separation is suppressed and `run_simulation` stops with an explanatory error.
+The spinodal points `c_sp = [c_s1, c_s2]` come from the coherent-spinodal condition `mu_chem'(c) + 2*A_int = 0` in `find_spinodal_points`. For `Lambda >= Lambda_c` (1.8 for the default `mu_chem` and `nu = 0.25`) no spinodal points exist: phase separation is suppressed and `run_simulation` stops with an explanatory error. The external stress does not affect either set of critical points.
 
 ## Notation
 
 | Paper | Code | Meaning |
 |---|---|---|
-| alpha, gamma | `alpha`, `gamma` | Swelling parameter, mechanical coupling parameter |
+| Lambda, alpha | `Lambda`, `alpha` | Mechanical coupling parameter, swelling magnitude |
+| A_int | `A_int` | Incompatibility penalty, `Lambda*(1+3nu_bar)/(3(1+nu_bar))` |
 | nu, nu-bar | `nu`, `nu_bar` | Poisson ratio, `nu/(1-2nu)` |
-| sigma_y | `sigma_y` | Yield stress of the external shell |
-| sigma_rr^ext | `sig_ext` | External radial stress at the particle surface |
+| sigma_y^* | `sigma_y` | Scaled yield stress of the external shell |
+| sigma_rr^ext | `sig_ext` | External radial stress at the particle surface, in units of `R_g*T/V_c` |
 | c_avg | `c_av` (dimensional, mol/m^3), `theta = c_av/c_m` or `c_avg` (dimensionless) | Average concentration |
 | c_c, c_s | `c_c`, `c_s` | Core and shell concentrations |
 | psi | `psi` | Core volume fraction |
 | c_b1, c_b2 | `c_b(1)`, `c_b(2)` | Binodal points |
 | c_s1, c_s2 | `c_sp(1)`, `c_sp(2)` | Spinodal points |
-| mu_chem(c), g_chem(c) | `mu_chem`, `f_chem` | Homogeneous chemical potential and free energy, Eq. (72) |
-| mu | `mu_hys` | Surface chemo-mechanical potential, Eqs. (20), (64), (73) |
+| mu_chem(c), g_chem(c) | `mu_chem`, `f_chem` | Homogeneous chemical potential and free energy |
+| mu | `mu_hys` | Surface chemo-mechanical potential (`mu_single`, `mu_sep`) |
 | Phi | `Phi` | Electrode potential |
-| j_tr | `jtr` | Interfacial transfer current density, Eq. (76) |
+| j_tr | `jtr` | Interfacial transfer current density |
 | N^(i), A^(i), V^(i) | `N_part`, `Apart`, `Vol` | Particles, surface area and volume per group |
-| k, u0, I0, c_m | `k`, `u0`, `I0`, `c_m` | As in Table 3 |
+| k, u0, I0, c_m | `k`, `u0`, `I0`, `c_m` | As in the ensemble parameter table |
 
 The phase state `s` of a particle is `0` (single phase), `+1` (lithium-rich shell, core `c_b1`, shell `c_b2`) or `-1` (lithium-poor shell, core `c_b2`, shell `c_b1`).
 
@@ -188,19 +204,26 @@ The phase state `s` of a particle is `0` (single phase), `+1` (lithium-rich shel
 For size group `i` (radius `R_i`) with average concentration `c_avg^(i)`, phase state `s_i`, external stress `sig_ext^(i)` and a common electrode potential `Phi`:
 
 ```
-dc_avg^(i)/dt  = -j_tr^(i) A^(i) / (F V^(i))                          Eq. (74)
-eta^(i)        = (F Phi + mu^(i)) / (R_g T)                           Eq. (75)
-j_tr^(i)       = 2 I0 sqrt(c_surf (c_m - c_surf)) / c_m * sinh(eta/2) Eq. (76)
-I(t)           = sum_i N^(i) A^(i) j_tr^(i)                           Eq. (77)
+dc_avg^(i)/dt  = -j_tr^(i) A^(i) / (F V^(i))
+eta^(i)        = (F Phi + mu^(i)) / (R_g T)
+j_tr^(i)       = 2 I0 sqrt(c_surf (c_m - c_surf)) / c_m * sinh(eta/2)
+I(t)           = sum_i N^(i) A^(i) j_tr^(i)
 d sig_ext/dt   = -k (sig_ext - sig_ideal),
-sig_ideal      = sigma_y tanh(I/u0)                                   Eqs. (78), (79)
+sig_ideal      = sigma_y tanh(I/u0)
 ```
 
-`mu^(i)` is the surface chemo-mechanical potential from the single-particle model (`mu_hys`): `mu_chem(c_avg) - gamma*sig_ext` for a single-phase particle, and Eq. (73) in the shell of a core-shell particle. The system is a fully implicit DAE solved with `ode15i`. Phase changes are located with event functions; after each event, consistent initial conditions are recomputed and integration resumes. At the start of each current block the external stress is reset to `sign(I)*sigma_y` (the shell is assumed to have yielded in the direction of the new current), and the current is ramped smoothly between blocks (`ramp_current`).
+`mu^(i)` is the surface chemo-mechanical potential from the single-particle model (`mu_hys`): in units of `R_g*T`,
+
+```
+mu_single = mu_chem(c_avg) - sig_ext
+mu_sep    = mu_chem(c_s) - 2 A_int (c_avg - c_s) - sig_ext,   A_int = Lambda (1+3 nu_bar) / (3 (1+nu_bar))
+```
+
+for a single-phase and a core-shell particle (shell concentration `c_s`). `Lambda` tilts the mixed-phase branch; the external stress translates both branches by `-sig_ext`, so a hysteretic stress of `+-sigma_y` widens the voltage gap by `2*sigma_y*R_g*T/F`. The system is a fully implicit DAE solved with `ode15i`. Phase changes are located with event functions; after each event, consistent initial conditions are recomputed and integration resumes. At the start of each current block the external stress is reset to `sign(I)*sigma_y` (the shell is assumed to have yielded in the direction of the new current), and the current is ramped smoothly between blocks (`ramp_current`).
 
 ## Using your own free energy
 
-The chemical free energy is defined in a single file, `src/thermodynamics/chemical_free_energy.m`, which returns `g_chem`, `mu_chem = g_chem'` and `mu_chem'`. `f_chem`, `mu_chem` and `mu_chem_prime` are thin wrappers around it, so the three can never become inconsistent. The shipped version is the regular solution of Eq. (72), `mu_chem = log(c/(1-c)) + 3(1-2c)`. Replace it with your own expression and run `runtests('tests')`: the tests check that the derivatives are consistent and that the critical points satisfy the common-tangent and stability conditions (the regression test against the original results will, of course, no longer apply).
+The chemical free energy is defined in a single file, `src/thermodynamics/chemical_free_energy.m`, which returns `g_chem`, `mu_chem = g_chem'` and `mu_chem'`. `f_chem`, `mu_chem` and `mu_chem_prime` are thin wrappers around it, so the three can never become inconsistent. The shipped version is the regular solution used in the paper, `mu_chem = log(c/(1-c)) + 3(1-2c)`. Replace it with your own expression and run `runtests('tests')`: the tests check that the derivatives are consistent and that the critical points satisfy the common-tangent and stability conditions (the regression test against the original results will, of course, no longer apply).
 
 ## Repository layout
 
@@ -231,11 +254,11 @@ MechoCPM/
 | Script | What it shows |
 |---|---|
 | `example_01_single_cycle` | One cycle with mechanics and external stress; all standard plots |
-| `example_02_gamma_sweep` | Effect of the mechanical coupling `gamma` |
+| `example_02_Lambda_sweep` | Effect of the mechanical coupling `Lambda` |
 | `example_03_sigma_y_sweep` | Effect of the yield stress `sigma_y` |
 | `example_04_crate_and_particles` | C-rate sweep, number of size groups, per-segment C-rates |
 | `example_05_ocv_hysteresis` | Quasi-static single-particle potential, no time integration (Fig. 3) |
-| `example_06_critical_points_vs_gamma` | Binodal (analytical and grid search) and spinodal points against `gamma` (Fig. 2) |
+| `example_06_critical_points_vs_Lambda` | Binodal (analytical and grid search) and spinodal points against `Lambda` (Fig. 2) |
 | `example_07_external_stress_comparison` | Ensemble with and without external stress (Figs. 4-7) |
 
 ## Output

@@ -1,7 +1,7 @@
 function [sols, labels] = run_parameter_sweep(name, values, varargin)
 %RUN_PARAMETER_SWEEP Run RUN_SIMULATION for several values of one parameter.
 %
-%   [sols, labels] = RUN_PARAMETER_SWEEP('gamma', [0 1 2], 'n_groups', 20)
+%   [sols, labels] = RUN_PARAMETER_SWEEP('Lambda', [0 0.66 1.32], 'n_groups', 20)
 %   [sols, labels] = RUN_PARAMETER_SWEEP('c_rate', {0.01, [0.01 0.05]}, params)
 %
 %   values may be a numeric vector (one run per element) or a cell array

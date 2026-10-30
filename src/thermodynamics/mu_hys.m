@@ -13,12 +13,13 @@ function mu = mu_hys(c_avg, s, sig_ext, params)
 %     s = +1 : core-shell, lithium-rich shell:  c_c = c_b1, c_s = c_b2
 %     s = -1 : core-shell, lithium-poor shell:  c_c = c_b2, c_s = c_b1
 %
-%   Single phase (Eq. 20 with sigma_kk = 3*sig_ext):
-%       mu = mu_chem(c_avg) - gamma*sig_ext
-%   Core-shell, evaluated in the shell (Eqs. 64 and 73):
-%       mu = mu_chem(c_s) - gamma*( sig_ext
-%                - 2*(c_s - c_c)*alpha*(1 + 3*nu_bar)/(3*(1 + nu_bar))*psi )
-%   with the core volume fraction psi = (c_avg - c_s)/(c_c - c_s) (Eq. 61).
+%   With stresses scaled by R_g*T/V_c (paper, "Non-dimensionalisation"),
+%   the surface potential is (paper: mu_single and mu_sep)
+%       single phase : mu = mu_chem(c_avg) - sig_ext
+%       core-shell   : mu = mu_chem(c_s) - 2*A_int*(c_avg - c_s) - sig_ext
+%   with A_int = Lambda*(1 + 3*nu_bar)/(3*(1 + nu_bar)). The external stress
+%   translates both branches rigidly; Lambda (through A_int) tilts the
+%   mixed-phase branch.
 %
 %   See also EXCHANGE_CURRENT, FIND_BINODAL_POINTS.
 
@@ -46,15 +47,13 @@ end
 % -------------------------------------------------------------------------
 function mu = mu_single_phase(c_avg, sig_ext, params)
 % Dimensionless potential of a single-phase particle (sigma_kk = 3*sig_ext).
-mu = mu_chem(c_avg) - params.gamma*sig_ext;
+mu = mu_chem(c_avg) - sig_ext;
 end
 
-function mu = mu_core_shell(c_avg, sig_ext, c_c, c_s, params)
+function mu = mu_core_shell(c_avg, sig_ext, ~, c_s, params)
 % Dimensionless surface (shell) potential of a core-shell particle.
-cons = 1 + 3*params.nu_bar;                  % 1 + 3*nu_bar;  cons + 2 = 3*(1 + nu_bar)
-psi  = (c_avg - c_s)./(c_c - c_s);           % core volume fraction
-mu   = mu_chem(c_s) - params.gamma*( sig_ext ...
-       - 2*(c_s - c_c)*params.alpha*cons/(cons + 2).*psi );
+% c_c is not needed explicitly: c_avg - c_s = psi*(c_c - c_s) by the lever rule.
+mu = mu_chem(c_s) - 2*params.A_int*(c_avg - c_s) - sig_ext;
 end
 
 function x = expand(x, sz)

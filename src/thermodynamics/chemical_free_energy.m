@@ -3,7 +3,7 @@ function [f, mu, dmu] = chemical_free_energy(c)
 %
 %   [f, mu, dmu] = CHEMICAL_FREE_ENERGY(c) returns, elementwise in the
 %   normalised concentration c in (0,1), the dimensionless free energy
-%   g_chem = f, the chemical potential mu_chem = df/dc (Eq. 72) and its
+%   g_chem = f, the chemical potential mu_chem = df/dc (as in the paper) and its
 %   derivative mu_chem' = d^2f/dc^2 (all in units of R_g*T).
 %
 %   This is the regular-solution free energy with interaction parameter

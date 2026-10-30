@@ -38,8 +38,16 @@ function [c_b, info] = find_binodal_points(params, varargin)
 %
 %   Requires the Optimization Toolbox (FSOLVE) for 'analytical' and 'both'.
 %
-%   The analytical method solves Eqs. (59)-(62) of the paper for the core and
-%   shell concentrations (c_c, c_s); the sorted pair is [c_b1, c_b2].
+%   The analytical method solves the reduced stationarity conditions of the
+%   paper ("Minimisation of the Gibbs free energy", Appendix D),
+%       mu_chem(c_c) - 2*A_int*(c_s - c_c)*(1 - psi) - lambda = 0
+%       g_chem(c_c) - g_chem(c_s) + A_int*(c_s - c_c)^2*(1 - 2*psi)
+%                                 + lambda*(c_s - c_c)          = 0
+%   with psi = (c_avg - c_s)/(c_c - c_s) and
+%   lambda = psi*mu_chem(c_c) + (1 - psi)*mu_chem(c_s). The grid search
+%   minimises the equivalent free energy
+%       G = psi*g_chem(c_c) + (1 - psi)*g_chem(c_s) + A_int*psi*(1 - psi)*(c_s - c_c)^2.
+%   The sorted pair is [c_b1, c_b2].
 %
 %   See also FIND_SPINODAL_POINTS, COMPUTE_CRITICAL_POINTS, F_CHEM, MU_CHEM.
 
@@ -58,9 +66,7 @@ opt = p.Results;
 method = validatestring(opt.Method, {'analytical', 'gridsearch', 'both'}, mfilename, 'Method');
 
 % ------------------------------------------------- model coefficients --
-mech.gamma = params.gamma;          % mechanical coupling parameter gamma
-mech.alpha = params.alpha;          % swelling parameter alpha
-mech.cons  = 1 + 3*params.nu_bar;   % 1 + 3*nu_bar
+mech.A_int = params.A_int;          % Lambda*(1 + 3*nu_bar)/(3*(1 + nu_bar))
 mech.c_avg = opt.c_avg;
 
 info = struct('method', method, 'analytical', [], 'exitflag', [], ...
@@ -107,14 +113,14 @@ end
 function [c_b, exitflag] = solve_analytical(mech, guess)
 % Solve the two stationarity conditions of the Gibbs free energy for the
 % core concentration c(1) and shell concentration c(2).
-g = mech.gamma; a = mech.alpha; k = mech.cons; c_avg = mech.c_avg;
+A = mech.A_int; c_avg = mech.c_avg;
 
 psi    = @(c) (c_avg - c(2)) ./ (c(1) - c(2));                   % core volume fraction
 lambda = @(c) psi(c)*mu_chem(c(1)) + (1 - psi(c))*mu_chem(c(2)); % Lagrange multiplier
 
 residual = @(c) [ ...
-    mu_chem(c(1)) - 2*g*a*k*(c(2) - c(1))*(1 - psi(c))/(k + 2) - lambda(c); ...
-    f_chem(c(1)) - f_chem(c(2)) + g*a*k*(c(2) - c(1))^2*(1 - 2*psi(c))/(k + 2) ...
+    mu_chem(c(1)) - 2*A*(c(2) - c(1))*(1 - psi(c)) - lambda(c); ...
+    f_chem(c(1)) - f_chem(c(2)) + A*(c(2) - c(1))^2*(1 - 2*psi(c)) ...
         + lambda(c)*(c(2) - c(1))];
 
 options = optimoptions('fsolve', 'Display', 'off', ...
@@ -136,8 +142,9 @@ function c_b = solve_grid(mech, n)
 % concentrations. The grid excludes 0 and 1, where f_chem is singular.
 % Loops over shell concentrations and vectorises over core concentrations,
 % which keeps memory use at O(n).
-g = mech.gamma; a = mech.alpha; k = mech.cons; c_avg = mech.c_avg;
-sig = 0;                                   % external stress (no effect on c_b)
+A = mech.A_int; c_avg = mech.c_avg;
+% The external-stress energy A_ext*sig_ext^2 is independent of c_c, c_s and
+% psi, so it is omitted: it does not affect the binodal points.
 
 c  = linspace(0, 1, n + 2);  c = c(2:end-1);
 fc = arrayfun(@f_chem, c);                 % chemical free energy on the grid
@@ -149,16 +156,10 @@ for i = 1:n
     D   = c_shell - c_core;
     psi = (c_avg - c_shell) ./ (c_core - c_shell);
 
-    w_core  = 3*(sig + a*k*D.*2.*(1 - psi)/(k + 2)) .* (sig/(a*k) + D.*2.*(1 - psi)/(k + 2));
-    w_shell = 3*(sig^2/(a*k) + 2*sig*D.*2.*(-psi)/(k + 2) ...
-                 + 2*(D/(k + 2)).^2*a*k.*psi.*(2*psi + k));
-
-    g_core  = fc       + g*0.5*w_core/3;
-    g_shell = fc(i)    + g*0.5*w_shell/3;
-
-    % The Lagrange term lambda*(psi*c_core + (1-psi)*c_shell - c_avg) is
-    % identically zero by the definition of psi, so it is omitted.
-    G = psi.*g_core + (1 - psi).*g_shell;
+    % Chemical energy plus the elastic incompatibility penalty. The Lagrange
+    % term lambda*(psi*c_core + (1-psi)*c_shell - c_avg) is identically zero
+    % by the definition of psi, so it is omitted.
+    G = psi.*fc + (1 - psi).*fc(i) + A*psi.*(1 - psi).*D.^2;
     G(~isfinite(psi) | psi < 0 | psi > 1) = NaN;
 
     [G_row, j] = min(G);                   % min ignores NaN
