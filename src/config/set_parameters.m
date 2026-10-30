@@ -9,9 +9,11 @@ function params = set_parameters(params, varargin)
 %   cannot be set directly.
 %
 %   Names from earlier versions of the code are still accepted:
-%       alph -> alpha,  gamm -> gamma,  sig_y -> sigma_y,  Far -> F,
-%       xstar -> c_b,   xspin -> c_sp,  n_total -> N_total,
-%       Poisson / nu_si -> nu
+%       alph -> alpha,  sig_y -> sigma_y,  Far -> F,  xstar -> c_b,
+%       xspin -> c_sp,  n_total -> N_total,  Poisson / nu_si -> nu,
+%       lambda -> Lambda
+%   'gamma' / 'gamm' (the coupling of the previous scaling) raise an error
+%   explaining the conversion Lambda = gamma*alpha, sigma_y -> gamma*sigma_y.
 
 if numel(varargin) == 1 && isstruct(varargin{1})
     s = varargin{1};
@@ -23,10 +25,11 @@ if mod(numel(varargin), 2) ~= 0
         'Parameters must be given as name-value pairs.');
 end
 
-aliases = struct('alph', 'alpha', 'gamm', 'gamma', 'sig_y', 'sigma_y', ...
+aliases = struct('alph', 'alpha', 'sig_y', 'sigma_y', ...
                  'far', 'F', 'xstar', 'c_b', 'xspin', 'c_sp', ...
                  'n_total', 'N_total', 'poisson', 'nu', 'nu_si', 'nu');
-derived = {'nu_bar', 'R_gT', 'R', 'Vol', 'Apart', 'N_part', 'Q', 'size_probs'};
+derived = {'nu_bar', 'R_gT', 'A_int', 'Lambda_c', 'R', 'Vol', 'Apart', 'N_part', 'Q', 'size_probs'};
+renamed = {'gamma', 'gamm'};
 fields  = fieldnames(params);
 
 for i = 1:2:numel(varargin)
@@ -35,6 +38,13 @@ for i = 1:2:numel(varargin)
         error('MechoCPM:set_parameters:badName', 'Parameter names must be text.');
     end
     key = char(name);
+    if any(strcmpi(key, renamed))
+        error('MechoCPM:set_parameters:renamed', ...
+            ['"%s" belongs to the previous scaling and has been replaced by Lambda.\n' ...
+             'Convert with  Lambda = gamma*alpha  (e.g. gamma = 4, alpha = 0.33 -> Lambda = 1.32).\n' ...
+             'Stresses are now scaled by R_g*T/V_c, so multiply old sigma_y values by gamma\n' ...
+             '(e.g. gamma = 4, sigma_y = 0.2 -> sigma_y = 0.8).'], char(name));
+    end
     if isfield(aliases, lower(key))
         key = aliases.(lower(key));
     end

@@ -1,5 +1,5 @@
 function ocv = compute_ocv_hysteresis(params, sig_ext, n_points)
-%COMPUTE_OCV_HYSTERESIS Quasi-static single-particle potentials (Fig. 3a,b,d).
+%COMPUTE_OCV_HYSTERESIS Quasi-static single-particle potentials (paper Fig. 3).
 %
 %   ocv = COMPUTE_OCV_HYSTERESIS(params, sig_ext, n_points) evaluates MU_HYS
 %   on a grid of average concentrations c_avg for one or more external
@@ -13,12 +13,12 @@ function ocv = compute_ocv_hysteresis(params, sig_ext, n_points)
 %
 %   Inputs (all optional)
 %     params    parameter struct (default: default_parameters())
-%     sig_ext   scalar or vector of external stresses (default 0)
+%     sig_ext   scalar or vector of scaled external stresses (default 0)
 %     n_points  number of c_avg points (default 900)
 %
 %   Outputs (dimensionless, units of R_g*T; rows correspond to sig_ext)
 %     ocv.c_avg      1 x n_points         average concentration
-%     ocv.mu_chem    1 x n_points         mu_chem(c_avg), the single-phase curve at gamma = 0
+%     ocv.mu_chem    1 x n_points         mu_chem(c_avg), the single-phase curve without external stress
 %     ocv.mu_lith    n_sig x n_points     lithiation branch
 %     ocv.mu_delith  n_sig x n_points     delithiation branch
 %     ocv.mu_mixed   n_sig x n_points     mixed-phase (equilibrium) curve

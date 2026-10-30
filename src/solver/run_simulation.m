@@ -2,14 +2,15 @@ function sol = run_simulation(varargin)
 %RUN_SIMULATION Galvanostatic cycling of a phase-changing particle ensemble.
 %
 %   sol = RUN_SIMULATION()                           default parameters
-%   sol = RUN_SIMULATION('gamma', 4, 'sigma_y', 0.2, 'c_rate', 1/500, 'n_groups', 50)
+%   sol = RUN_SIMULATION('Lambda', 1.32, 'sigma_y', 0.8, 'c_rate', 1/500, 'n_groups', 50)
 %   sol = RUN_SIMULATION(params)                     full parameter struct
-%   sol = RUN_SIMULATION(params, 'alpha', 0.4)       struct plus overrides
+%   sol = RUN_SIMULATION(params, 'Lambda', 0.99)     struct plus overrides
 %
 %   Any field of DEFAULT_PARAMETERS can be overridden by name (see
 %   SET_PARAMETERS for the accepted aliases).
 %
-%   The model is the ensemble DAE of the paper (Eqs. 74-79): average
+%   The model is the ensemble DAE of the paper ("Ensemble of interacting
+%   particles"): average
 %   concentrations c_avg^(i), reaction currents j_tr^(i), external stresses
 %   sig_ext^(i) and the electrode potential Phi, solved with ODE15I. Phase
 %   changes are located with event functions (SOLVE_BLOCK).
@@ -26,7 +27,7 @@ function sol = run_simulation(varargin)
 %     c_av     average concentration [mol/m^3]      (nt x n_groups)
 %     theta    c_av/c_m                             (nt x n_groups)
 %     jtr      reaction current density [A/m^2]     (nt x n_groups)
-%     sig_ext  external radial stress               (nt x n_groups)
+%     sig_ext  external radial stress, V_c*sigma/(R_g*T) (nt x n_groups)
 %     mu       chemo-mechanical potential [J/mol]   (nt x n_groups)
 %     s        phase state (0, +1, -1)              (nt x n_groups)
 %     params, protocol, n_events, runtime
@@ -46,8 +47,8 @@ protocol = build_current_protocol(params);
 n        = params.n_groups;
 
 if params.verbose
-    fprintf('MechoCPM: %d size groups, alpha = %g, gamma = %g, sigma_y = %g\n', ...
-        n, params.alpha, params.gamma, params.sigma_y);
+    fprintf('MechoCPM: %d size groups, Lambda = %g (A_int = %.4g), sigma_y = %g\n', ...
+        n, params.Lambda, params.A_int, params.sigma_y);
     fprintf('  binodal points [%.4f %.4f], spinodal points [%.4f %.4f]\n', ...
         params.c_b, params.c_sp);
 end

@@ -4,7 +4,7 @@ addpath(fullfile(fileparts(mfilename('fullpath')), '..'));
 setup_paths();
 
 base = default_parameters();
-base = set_parameters(base, 'gamma', 1, 'verbose', false);
+base = set_parameters(base, 'Lambda', 0.33, 'verbose', false);
 
 % C-rate sweep
 [sols_c, labels_c] = run_parameter_sweep('c_rate', [0.002, 0.01, 0.05], base, 'n_groups', 10);

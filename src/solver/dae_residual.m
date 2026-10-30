@@ -4,11 +4,11 @@ function res = dae_residual(t, w, wdot, s, I, I_prev, t_block, params)
 %   State vector  w = [c_av (n); jtr (n); sig_ext (n); Phi (1)]
 %
 %   Equations, for each size group i:
-%     dc_i/dt     = -jtr_i*A_i/(F*V_i)                 (Li conservation, Eq. 74)
-%     0           = BV(c_i, s_i, Phi, sig_i) - jtr_i    (Butler-Volmer, Eq. 76)
-%     dsig_i/dt   = -k*(sig_i - sig_ideal(I))           (external stress, Eq. 78)
+%     dc_i/dt     = -jtr_i*A_i/(F*V_i)                 (Li conservation)
+%     0           = BV(c_i, s_i, Phi, sig_i) - jtr_i    (Butler-Volmer)
+%     dsig_i/dt   = -k*(sig_i - sig_ideal(I))           (external stress)
 %   and globally
-%     0           = I_ramp(t) - sum_i N_i*A_i*jtr_i     (current conservation, Eq. 77)
+%     0           = I_ramp(t) - sum_i N_i*A_i*jtr_i     (current conservation)
 
 n = params.n_groups;
 
