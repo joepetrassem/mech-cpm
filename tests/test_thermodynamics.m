@@ -143,3 +143,16 @@ for Lambda = [0, 0.99]
     end
 end
 end
+
+function test_ocv_equilibrium_potential(testCase)
+% Phi_eq = -mu*R_g*T/F on every branch, and the external stress shifts it
+% by +sig_ext*R_g*T/F.
+p = set_parameters(default_parameters(), 'Lambda', 0.99);
+ocv = compute_ocv_hysteresis(p, [-0.6, 0, 0.6], 101);
+VT = 1000*p.R_gT/p.F;
+verifyEqual(testCase, ocv.Phi_lith,   -VT*ocv.mu_lith,   'AbsTol', 1e-12);
+verifyEqual(testCase, ocv.Phi_delith, -VT*ocv.mu_delith, 'AbsTol', 1e-12);
+verifyEqual(testCase, ocv.Phi_mixed,  -VT*ocv.mu_mixed,  'AbsTol', 1e-12);
+verifyEqual(testCase, ocv.Phi_lith(3, :) - ocv.Phi_lith(2, :), 0.6*VT*ones(1, 101), 'AbsTol', 1e-9);
+end
+

@@ -111,3 +111,20 @@ for i = 1:numel(data.ref)
     verifyLessThan(testCase, dPhi(ceil(0.99*numel(dPhi))), 1e-4);   % 99th percentile
 end
 end
+
+function test_voltage_summary_and_stress_gap(testCase)
+% voltage_summary returns Phi on both branches. A hysteretic external stress
+% of +-sigma_y translates the two branches rigidly, so the gap grows by
+% exactly 2*sigma_y*R_g*T/F (paper, "Half-cell lithiation and delithiation").
+common = {'n_groups', 3, 'c_rate', 0.5, 'Lambda', 0.33, 'verbose', false};
+sol0 = run_simulation(common{:}, 'sigma_y', 0);
+sol1 = run_simulation(common{:}, 'sigma_y', 0.4);
+s = voltage_summary({sol0, sol1}, {'0', '0.4'}, [0.3, 0.5, 0.7]);
+verifyTrue(testCase, all(isfinite([s.Phi_lith, s.Phi_delith])));
+verifyEqual(testCase, s(1).gap, s(1).Phi_delith - s(1).Phi_lith, 'AbsTol', 1e-12);
+verifyGreaterThan(testCase, s(1).gap, 0);                     % delithiation above lithiation
+VT = 1000*sol0.params.R_gT/sol0.params.F;                     % [mV]
+verifyEqual(testCase, s(2).gap - s(1).gap, 2*0.4*VT*ones(1, 3), 'AbsTol', 0.05);
+verifyEqual(testCase, s(1).Phi_range, 1000*[min(sol0.Phi), max(sol0.Phi)], 'AbsTol', 1e-12);
+end
+

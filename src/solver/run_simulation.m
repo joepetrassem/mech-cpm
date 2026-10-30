@@ -89,6 +89,12 @@ for b = 1:numel(protocol.I)
     [t_b, w_b, s_b, ne] = solve_block(tspan, w0, wdot0, s, I, I_prev, params);
     n_events = n_events + ne;
 
+    if params.verbose
+        fprintf('           Phi %+.2f -> %+.2f mV (min %+.2f, max %+.2f), %d events\n', ...
+            1000*w_b(1, end), 1000*w_b(end, end), 1000*min(w_b(:, end)), ...
+            1000*max(w_b(:, end)), ne);
+    end
+
     w = w_b(end, :)';
     s = s_b(end, :)';
 
@@ -103,7 +109,8 @@ sol.n_events = n_events;
 sol.runtime  = toc(timer);
 
 if params.verbose
-    fprintf('  done: %d phase-change events, %.1f s\n', n_events, sol.runtime);
+    fprintf('  done: %d phase-change events, Phi in [%+.2f, %+.2f] mV, %.1f s\n', ...
+        n_events, 1000*min(sol.Phi), 1000*max(sol.Phi), sol.runtime);
 end
 end
 

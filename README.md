@@ -32,7 +32,9 @@ setup_paths();               % adds src/ to the MATLAB path
 
 sol = run_simulation('Lambda', 1.32, 'sigma_y', 0.8, 'n_groups', 20, 'c_rate', 0.01);
 
-plot_voltage_soc(sol);
+plot_voltage_soc(sol);          % electrode potential [mV] against SoC
+plot_voltage_time(sol);         % ... and against time
+voltage_summary(sol);           % prints Phi on each branch and the hysteresis gap
 plot_phase_fraction(sol);
 ```
 
@@ -48,13 +50,14 @@ results = runtests('tests');
 disp(table(results))
 ```
 
-All 25 tests should pass. They check, among other things, that
+All 33 tests should pass (`test_examples` runs examples 1-6 without figures on screen, so allow a minute or two). They check, among other things, that
 
 - `mu_chem`, `mu_chem_prime` and `f_chem` are mutually consistent and equal the paper's `mu_chem`;
 - the spinodal points satisfy the coherent-spinodal condition `mu_chem'(c) + 2*A_int = 0`, exist only for `Lambda < Lambda_c = 1.8`, and the binodal points satisfy the common-tangent construction at `Lambda = 0`;
 - the analytical and grid-search binodal methods agree, and the binodal points do not depend on `c_avg`;
 - `mu_hys` equals the paper's `mu_single` and `mu_sep`, the core and shell potentials are equal at equilibrium, and the external stress shifts the potential by exactly `-sig_ext` for any `Lambda`;
-- old `gamma` inputs are rejected with the conversion to `Lambda`;
+- old `gamma` inputs are rejected with the conversion to `Lambda`, and examples 1-6 run and produce figures and logs that never mention `gamma`;
+- a hysteretic external stress of `+-sigma_y` widens the simulated voltage gap by exactly `2*sigma_y*R_g*T/F`, and the quasi-static equilibrium potential is `-mu*R_g*T/F`;
 - the DAE initial conditions are consistent and a short cycle conserves charge;
 - **`test_regression_against_original_code`**: the electrode potential, binodal and spinodal points reproduce results saved from the original, pre-reorganisation code (`tests/data/original_code_reference.mat`) for four parameter sets, to within solver tolerance (RMS difference below 10 microvolts). The reference was made with the previous scaling and is converted with `Lambda = gamma*alpha`, `sigma_y = gamma*sigma_y_old`, which checks that the change of scaling leaves the model unchanged.
 
@@ -70,13 +73,13 @@ What to expect from each example:
 
 | Example | Runtime | What you should see |
 |---|---|---|
-| `example_01_single_cycle` | seconds | 4 figures: a voltage curve with a plateau and small steps, particle potentials, external stress switching between about -0.6 and +0.6, and the fraction of phase-separated particles rising and falling |
-| `example_02_Lambda_sweep` | seconds | 2 figures: voltage curves and phase fractions for `Lambda` = 0, 0.33, 0.66, 1.32; the plateau shrinks and tilts as `Lambda` grows |
-| `example_03_sigma_y_sweep` | seconds | larger `sigma_y` widens the gap between lithiation and delithiation voltages (about 20 mV at `sigma_y` = 0 to about 60 mV at 0.8 near SoC = 0.5; each unit of `sigma_y` adds `2*R_g*T/F`, about 52 mV) |
-| `example_04_crate_and_particles` | seconds | C-rate sweep, number-of-groups sweep and per-segment C-rates |
-| `example_05_ocv_hysteresis` | 1 s | Paper Fig. 3a (flat plateau at `Lambda = 0`), Fig. 3b (sloped mixed-phase line, `Lambda = 0.99`) and Fig. 3d (curves shifted by `sig_ext = -0.6, 0, 0.6`). Prints `c_b = [0.0707 0.9293]` for `Lambda = 0` and `c_b = [0.1570 0.8430]`, `c_sp = [0.2857 0.7143]` for `Lambda = 0.99` |
+| `example_01_single_cycle` | seconds | 6 figures: electrode potential against SoC (a plateau with small steps) and against time, particle potentials, external stress switching between about -0.6 and +0.6, and the fraction of phase-separated particles rising and falling. Prints the potential on each branch at SoC = 0.25, 0.5, 0.75 and the gap |
+| `example_02_Lambda_sweep` | seconds | Electrode potential against SoC and time, and phase fractions, for `Lambda` = 0, 0.33, 0.66, 1.32; the plateau shrinks and tilts as `Lambda` grows. Prints the potential and gap for each run |
+| `example_03_sigma_y_sweep` | seconds | Electrode potential against SoC and time for `sigma_y` = 0, 0.2, 0.4, 0.8: larger `sigma_y` widens the gap between lithiation and delithiation (about 20 mV at `sigma_y` = 0 to about 60 mV at 0.8 near SoC = 0.5). Prints the simulated increase of the gap next to the prediction `2*sigma_y*R_g*T/F` (about 52 mV per unit); the two agree |
+| `example_04_crate_and_particles` | seconds | Electrode potential against SoC and time, with printed summaries, for a C-rate sweep, a number-of-groups sweep and per-segment C-rates |
+| `example_05_ocv_hysteresis` | 1 s | Paper Fig. 3a (flat plateau at `Lambda = 0`), Fig. 3b (sloped mixed-phase line, `Lambda = 0.99`) and Fig. 3d (curves shifted by `sig_ext = -0.6, 0, 0.6`), each with the matching equilibrium electrode potential `-mu*R_g*T/F` [mV]. Prints `c_b = [0.0707 0.9293]` for `Lambda = 0` and `c_b = [0.1570 0.8430]`, `c_sp = [0.2857 0.7143]` for `Lambda = 0.99`, and the potentials at c_avg = 0.5, which shift by about +-15.5 mV for `sig_ext = -+0.6` |
 | `example_06_critical_points_vs_Lambda` | seconds | Paper Fig. 2: spinodal and binodal points against `Lambda`, with `Lambda_c = 1.8` marked; prints the largest analytical vs grid-search difference (below 1e-3) |
-| `example_07_external_stress_comparison` | 1-2 min | Paper Figs. 4/6 (filling ratio of each particle group) and Fig. 7 (voltage with and without external stress, `Lambda = 1.32`, `sigma_y = 0.8`) |
+| `example_07_external_stress_comparison` | 1-2 min | Paper Figs. 4/6 (filling ratio of each particle group), Fig. 7 (electrode potential against SoC with and without external stress, `Lambda = 1.32`, `sigma_y = 0.8`) and the electrode potential against time. Prints both voltage summaries and the gap increase, about 41 mV (`2*0.8*R_g*T/F`) |
 
 **3. A quick check by hand.** With no mechanics the binodal points are the classical regular-solution values:
 
@@ -153,6 +156,7 @@ With the new scaling the external stress acts even when `Lambda = 0`, which the 
 ```matlab
 [sols, labels] = run_parameter_sweep('Lambda', [0 0.33 0.66 1.32], 'n_groups', 10);
 plot_voltage_soc(sols, labels);
+voltage_summary(sols, labels);
 ```
 
 ## Binodal points: analytical vs grid search
@@ -240,12 +244,12 @@ MechoCPM/
 |   |                               compute_critical_points
 |   |-- kinetics/                   exchange_current
 |   |-- mechanics/                  sig_ideal
-|   |-- analysis/                   run_parameter_sweep, compute_ocv_hysteresis
-|   `-- plotting/                   plot_voltage_soc, plot_potential, plot_external_stress,
-|                                   plot_phase_fraction, plot_filling_ratio, plot_ocv_hysteresis,
+|   |-- analysis/                   run_parameter_sweep, compute_ocv_hysteresis, voltage_summary
+|   `-- plotting/                   plot_voltage_soc, plot_voltage_time, plot_potential, plot_external_stress,
+|                                   plot_phase_fraction, plot_filling_ratio, plot_ocv_hysteresis, plot_ocv_voltage,
 |                                   plot_results_comparison, new_figure, make_fixed_figure
 |-- examples/                       example_01 ... example_07, run_all_examples
-|-- tests/                          test_thermodynamics, test_solver, data/original_code_reference.mat
+|-- tests/                          test_thermodynamics, test_solver, test_examples, data/original_code_reference.mat
 `-- .github/workflows/tests.yml     runs the tests on every push
 ```
 
@@ -263,7 +267,16 @@ MechoCPM/
 
 ## Output
 
-`run_simulation` returns a struct with the time `t`, state of charge `SOC`, electrode potential `Phi`, applied current `I` and, per size group, `c_av`, `theta`, `jtr`, `sig_ext`, `mu` and phase state `s`, together with the `params` and `protocol` used, the number of phase-change events `n_events` and the `runtime`.
+`run_simulation` returns a struct with the time `t`, state of charge `SOC`, electrode potential `Phi`, applied current `I` and, per size group, `c_av`, `theta`, `jtr`, `sig_ext`, `mu` and phase state `s`, together with the `params` and `protocol` used, the number of phase-change events `n_events` and the `runtime`. With `verbose` on (the default) it also logs the electrode potential at the start and end of each block and its range over the run.
+
+For the electrode potential:
+
+| Function | Output |
+|---|---|
+| `plot_voltage_soc(sols, labels)` | `Phi` [mV] against SoC |
+| `plot_voltage_time(sols, labels)` | `Phi` [mV] against time, with the protocol blocks marked |
+| `voltage_summary(sols, labels, soc_points)` | Prints, and returns, `Phi` on the lithiation and delithiation branches at the given SoC (default 0.25, 0.5, 0.75), the gap between them and the range of `Phi` |
+| `compute_ocv_hysteresis` + `plot_ocv_voltage` | Quasi-static equilibrium potential `-mu*R_g*T/F` of a single particle |
 
 ## Publishing this repository on GitHub
 
