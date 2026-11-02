@@ -1,7 +1,9 @@
-function sig = sig_ideal(u_dot, params)
+function [sig, dsig_du] = sig_ideal(u_dot, params)
 %SIG_IDEAL Target external stress of a rapidly yielding plastic shell.
 %
 %   sig = SIG_IDEAL(u_dot, params) = -sigma_y*tanh(u_dot/u0)
+%   [sig, dsig_du] = SIG_IDEAL(...) also returns d(sig)/d(u_dot), which the
+%   DAE Jacobian (DAE_JACOBIAN) uses.
 %
 %   u_dot is the dimensionless surface velocity of each particle [1/s]
 %   (see SURFACE_VELOCITY). The shell opposes the motion of the surface: an
@@ -12,10 +14,14 @@ function sig = sig_ideal(u_dot, params)
 %   switches between -+sigma_y. The value used is params.u0_used: u0 if
 %   given, otherwise 5% of the nominal swelling rate min(c_rate)/3600.
 %
-%   To model another external medium, change this function, SURFACE_VELOCITY
-%   and the relaxation law in DAE_RESIDUAL (and SOLVE_STRESS_RATE, which
-%   solves that law for the stress rate).
+%   To model another external medium, change this function (both outputs),
+%   and if needed SURFACE_VELOCITY, the relaxation law in DAE_RESIDUAL /
+%   DAE_JACOBIAN and SOLVE_STRESS_RATE.
 %
-%   See also SURFACE_VELOCITY, SOLVE_STRESS_RATE, DAE_RESIDUAL.
-sig = -params.sigma_y*tanh(u_dot/params.u0_used);
+%   See also SURFACE_VELOCITY, SOLVE_STRESS_RATE, DAE_RESIDUAL, DAE_JACOBIAN.
+x   = u_dot/params.u0_used;
+sig = -params.sigma_y*tanh(x);
+if nargout > 1
+    dsig_du = -params.sigma_y*sech(x).^2/params.u0_used;
+end
 end

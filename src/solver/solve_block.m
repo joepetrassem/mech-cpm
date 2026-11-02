@@ -16,7 +16,8 @@ n_events = 0;
 
 while true
     s_now = s;   % frozen copy captured by the function handles below
-    opts = odeset('RelTol', params.RelTol, 'AbsTol', params.AbsTol);
+    opts = odeset('RelTol', params.RelTol, 'AbsTol', params.AbsTol, ...
+        'Jacobian', @(tt, ww, yp) dae_jacobian(tt, ww, yp, s_now, I, I_prev, t_block, params));
     residual = @(tt, ww, yp) dae_residual(tt, ww, yp, s_now, I, I_prev, t_block, params);
     if params.phase_separation
         opts = odeset(opts, 'Events', @(tt, ww, yp) phase_change_events(tt, ww, yp, s_now, params));
