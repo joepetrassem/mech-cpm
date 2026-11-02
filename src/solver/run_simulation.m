@@ -128,16 +128,16 @@ function check_stress_regime(params)
 if params.Lambda == 0 || params.sigma_y == 0, return; end
 rate = min(params.c_rate)/3600;                    % filling-fraction rate [1/s]
 K = params.Lambda*(1 + 3*params.nu_bar);
-if params.u0 > 0.1*rate
+if params.u0_used > 0.1*rate
     warning('MechoCPM:u0Regime', ...
         ['u0 = %g 1/s is not small compared with the swelling rate C-rate/3600 = %g 1/s: ' ...
-         'the external stress will not reach +-sigma_y. Reduce u0.'], params.u0, rate);
+         'the external stress will not reach +-sigma_y. Reduce u0.'], params.u0_used, rate);
 end
-if K*params.u0 > 0.1*params.k*params.sigma_y
+if K*params.u0_used > 0.1*params.k*params.sigma_y
     warning('MechoCPM:u0Regime', ...
         ['Lambda*(1+3*nu_bar)*u0 = %g is not small compared with k*sigma_y = %g: ' ...
          'the shell will not behave as rigid-plastic. Reduce u0 or increase k.'], ...
-        K*params.u0, params.k*params.sigma_y);
+        K*params.u0_used, params.k*params.sigma_y);
 end
 end
 

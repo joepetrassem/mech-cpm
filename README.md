@@ -128,7 +128,7 @@ Names are case-insensitive, misspelt names raise an error listing the valid ones
 | `N_total` | 1e13 | Total number of particles N (only rescales capacity and current) |
 | `rest_time` | 100 s | Open-circuit rest before cycling |
 | `k` | 0.01 1/s | Relaxation rate of the external stress |
-| `u0` | 1e-8 1/s | Reference surface velocity in `sigma_ideal`; must be much smaller than the swelling rate `C-rate/3600` (5.6e-7 1/s at C/500), and `Lambda*(1+3*nu_bar)*u0` much smaller than `k*sigma_y`, for the shell to act as rigid-plastic. `run_simulation` warns if not |
+| `u0` | `[]` (auto) | Reference surface velocity in `sigma_ideal` [1/s]. Empty: `0.05*min(c_rate)/3600`, 5% of the nominal swelling rate (stored as `u0_used`). The shell acts as rigid-plastic when `u0` is much smaller than the swelling rate and `Lambda*(1+3*nu_bar)*u0` much smaller than `k*sigma_y`; `run_simulation` warns if not. Much smaller values make the switch so sharp that `ode15i` may stop |
 | `I0` | 1 A/m^2 | Exchange current density |
 | `c_m` | 2.7e5 mol/m^3 | Maximum concentration |
 | `F`, `R_g`, `T` | 96500, 8.314, 300 | Faraday constant, gas constant, temperature |

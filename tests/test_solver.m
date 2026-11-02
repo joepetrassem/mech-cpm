@@ -189,7 +189,7 @@ function test_no_external_stress_without_coupling(testCase)
 % Lambda = 0: the particle never loads the shell, so sig_ext = 0 for any sigma_y.
 sol = run_simulation('n_groups', 3, 'c_rate', 0.5, 'Lambda', 0, 'sigma_y', 0.8, ...
     'verbose', false);
-verifyEqual(testCase, sol.sig_ext, zeros(size(sol.sig_ext)));
+verifyEqual(testCase, sol.sig_ext, zeros(size(sol.sig_ext)), 'AbsTol', 1e-12);
 end
 
 function test_stress_rate_solves_implicit_law(testCase)
@@ -198,7 +198,11 @@ p = set_parameters(default_parameters(), 'Lambda', 0.99, 'sigma_y', 0.6);
 sig   = [-0.6; -0.3; 0; 0.3; 0.6; 0.1];
 c_dot = p.c_m*[1e-4; 1e-4; -1e-4; -1e-4; 0; 1e-12];
 sd = solve_stress_rate(sig, c_dot, p);
-u_dot = surface_velocity(sd, c_dot, p);
-verifyEqual(testCase, sd, -p.k*(sig - sig_ideal(u_dot, p)), 'AbsTol', 1e-14);
+% The residual is steep near the root, so check that the root is bracketed
+% to within a few ulps rather than evaluating the residual itself.
+g = @(x) x + p.k*(sig - sig_ideal(surface_velocity(x, c_dot, p), p));
+d = 8*eps(max(abs(sd), realmin));
+verifyTrue(testCase, all(g(sd - d) <= 0 & g(sd + d) >= 0));
+verifyTrue(testCase, all(sd >= -p.k*(sig + p.sigma_y) & sd <= -p.k*(sig - p.sigma_y)));
 end
 

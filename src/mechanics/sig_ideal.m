@@ -9,12 +9,13 @@ function sig = sig_ideal(u_dot, params)
 %   -sigma_y, a contracting one is pulled outwards towards +sigma_y.
 %   sigma_y is the scaled yield stress V_c*sigma_y/(R_g*T); u0 is a
 %   reference surface velocity [1/s] that sets how sharply the target
-%   switches between -+sigma_y.
+%   switches between -+sigma_y. The value used is params.u0_used: u0 if
+%   given, otherwise 5% of the nominal swelling rate min(c_rate)/3600.
 %
 %   To model another external medium, change this function, SURFACE_VELOCITY
 %   and the relaxation law in DAE_RESIDUAL (and SOLVE_STRESS_RATE, which
 %   solves that law for the stress rate).
 %
 %   See also SURFACE_VELOCITY, SOLVE_STRESS_RATE, DAE_RESIDUAL.
-sig = -params.sigma_y*tanh(u_dot/params.u0);
+sig = -params.sigma_y*tanh(u_dot/params.u0_used);
 end

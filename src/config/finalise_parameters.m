@@ -4,6 +4,7 @@ function params = finalise_parameters(params)
 %   Derived fields:
 %     nu_bar   = nu/(1 - 2*nu)
 %     R_gT     = R_g*T
+%     u0_used  = u0, or 0.05*min(c_rate)/3600 if u0 is empty (default) [1/s]
 %     A_int    = Lambda*(1 + 3*nu_bar)/(3*(1 + nu_bar))   incompatibility penalty
 %     Lambda_c = 3*(1 + nu_bar)/(1 + 3*nu_bar)            Lambda at which A_int = 1
 %                (for the default mu_chem, min mu_chem' = -2, phase separation
@@ -25,7 +26,6 @@ num(params.alpha,    'alpha',    {'scalar', 'real', 'finite', 'positive'});
 num(params.sigma_y,  'sigma_y',  {'scalar', 'real', 'finite', 'nonnegative'});
 num(params.nu,       'nu',       {'scalar', 'real', '>', -1, '<', 0.5});
 num(params.k,        'k',        {'scalar', 'real', 'finite', 'nonnegative'});
-num(params.u0,       'u0',       {'scalar', 'real', 'finite', 'positive'});
 num(params.I0,       'I0',       {'scalar', 'real', 'finite', 'positive'});
 num(params.c_m,      'c_m',      {'scalar', 'real', 'finite', 'positive'});
 num(params.F,        'F',        {'scalar', 'real', 'finite', 'positive'});
@@ -38,6 +38,12 @@ num(params.sigma_R,  'sigma_R',  {'scalar', 'real', 'finite', 'nonnegative'});
 num(params.soc_waypoints, 'soc_waypoints', {'vector', 'real', '>', 0, '<', 1});
 num(params.c_rate,   'c_rate',   {'vector', 'real', 'finite', 'positive'});
 num(params.rest_time,'rest_time',{'scalar', 'real', 'finite', 'nonnegative'});
+if isempty(params.u0)
+    params.u0_used = 0.05*min(params.c_rate(:))/3600;    % 5% of the nominal swelling rate
+else
+    num(params.u0, 'u0', {'scalar', 'real', 'finite', 'positive'});
+    params.u0_used = params.u0;
+end
 num(params.c_b,      'c_b',      {'numel', 2, 'real'});
 num(params.c_sp,     'c_sp',     {'numel', 2, 'real'});
 params.phase_separation = all(isfinite([params.c_b(:); params.c_sp(:)]));

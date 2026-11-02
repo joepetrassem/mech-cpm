@@ -44,8 +44,10 @@ params.nu  = 0.25;             % Poisson ratio (nu_bar = nu/(1-2*nu) is derived)
 params.Lambda  = 0;            % mechanical coupling Lambda (0 = no internal stress)
 params.sigma_y = 0;            % scaled yield stress of the external shell, V_c*sigma_y/(R_g*T)
 params.alpha   = 0.33;         % swelling magnitude alpha = V_c*c_m/3 (displacement scale only)
-params.u0      = 1e-8;         % reference surface velocity in sig_ideal [1/s]; must be
-                               % << C-rate/3600 (5.6e-7 1/s at C/500) for a rigid-plastic shell
+params.u0      = [];           % reference surface velocity in sig_ideal [1/s]. Empty (default):
+                               % 0.05*min(c_rate)/3600, i.e. 5% of the nominal swelling rate,
+                               % which keeps the shell rigid-plastic (u0 << swelling rate) and the
+                               % switch smooth enough for ode15i at every C-rate. Derived: u0_used
 params.k       = 0.01;         % relaxation rate of sig_ext towards sig_ideal [1/s]
 
 %% Reaction kinetics
