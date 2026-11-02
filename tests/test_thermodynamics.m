@@ -145,14 +145,72 @@ end
 end
 
 function test_ocv_equilibrium_potential(testCase)
-% Phi_eq = -mu*R_g*T/F on every branch, and the external stress shifts it
-% by +sig_ext*R_g*T/F.
+% Phi_eq = -mu*R_g*T/F on every branch and path, and the external stress
+% shifts it by +sig_ext*R_g*T/F.
 p = set_parameters(default_parameters(), 'Lambda', 0.99);
 ocv = compute_ocv_hysteresis(p, [-0.6, 0, 0.6], 101);
 VT = 1000*p.R_gT/p.F;
-verifyEqual(testCase, ocv.Phi_lith,   -VT*ocv.mu_lith,   'AbsTol', 1e-12);
-verifyEqual(testCase, ocv.Phi_delith, -VT*ocv.mu_delith, 'AbsTol', 1e-12);
-verifyEqual(testCase, ocv.Phi_mixed,  -VT*ocv.mu_mixed,  'AbsTol', 1e-12);
+verifyEqual(testCase, ocv.Phi_lith,      -VT*ocv.mu_lith,      'AbsTol', 1e-12);
+verifyEqual(testCase, ocv.Phi_delith,    -VT*ocv.mu_delith,    'AbsTol', 1e-12);
+verifyEqual(testCase, ocv.lith.Phi,      -VT*ocv.lith.mu,      'AbsTol', 1e-12);
+verifyEqual(testCase, ocv.delith.Phi,    -VT*ocv.delith.mu,    'AbsTol', 1e-12);
 verifyEqual(testCase, ocv.Phi_lith(3, :) - ocv.Phi_lith(2, :), 0.6*VT*ones(1, 101), 'AbsTol', 1e-9);
+verifyFalse(testCase, isfield(ocv, 'mu_mixed'));
 end
 
+function test_ocv_branch_stability(testCase)
+% Single-phase states are stable outside [c_b1, c_b2], metastable between a
+% binodal and the adjacent spinodal point, and unstable between the spinodals.
+ocv = compute_ocv_hysteresis(set_parameters(default_parameters(), 'Lambda', 0.99), 0, 401);
+c = ocv.c_avg;  b = ocv.c_b;  sp = ocv.c_sp;
+verifyTrue(testCase, all(ocv.single_state(c < b(1) | c > b(2)) == 0));
+verifyTrue(testCase, all(ocv.single_state(c > b(1) & c < sp(1)) == 1));
+verifyTrue(testCase, all(ocv.single_state(c > sp(2) & c < b(2)) == 1));
+verifyTrue(testCase, all(ocv.single_state(c > sp(1) & c < sp(2)) == 2));
+% Between the spinodals mu_chem' < -2*A_int <= 0, so the single-phase
+% branch decreases there
+u = ocv.single_state == 2;
+verifyTrue(testCase, all(diff(ocv.mu_single(u)) < 0));
+verifyTrue(testCase, all(isnan(ocv.mu_sep(c < b(1) | c > b(2)))));
+end
+
+function test_ocv_rich_and_poor_shell_coincide(testCase)
+% At equilibrium mu_core = mu_shell, so the rich-shell (s = +1) and
+% poor-shell (s = -1) mixed-phase branches are the same line.
+for Lambda = [0, 0.99, 1.32]
+    p = compute_critical_points(set_parameters(default_parameters(), 'Lambda', Lambda));
+    c = linspace(p.c_b(1), p.c_b(2), 50);
+    verifyEqual(testCase, mu_hys(c, 1, 0.3, p), mu_hys(c, -1, 0.3, p), 'AbsTol', 1e-6*p.R_gT);
+end
+end
+
+function test_ocv_cycling_paths(testCase)
+% Paper Fig. 3c,d: lithiation jumps down onto the mixed-phase line at c_s1
+% and rejoins the single-phase branch continuously at c_b2; delithiation
+% jumps up at c_s2 and rejoins continuously at c_b1.
+for Lambda = [0, 0.99]
+    ocv = compute_ocv_hysteresis(set_parameters(default_parameters(), 'Lambda', Lambda), [-0.6, 0, 0.6]);
+    L = ocv.lith;  D = ocv.delith;
+    verifyTrue(testCase, all(diff(L.c) >= 0));           % travel order
+    verifyTrue(testCase, all(diff(D.c) <= 0));
+    verifyEqual(testCase, unique(L.s), [0, 1]);
+    verifyEqual(testCase, unique(D.s), [-1, 0]);
+
+    i = find(L.s ~= 0, 1);                               % lithiation jump
+    verifyEqual(testCase, L.c(i), ocv.c_sp(1), 'AbsTol', 1e-12);
+    verifyEqual(testCase, L.c(i - 1), L.c(i), 'AbsTol', 1e-12);
+    verifyLessThan(testCase, L.mu(:, i) - L.mu(:, i - 1), -1e-3);
+    e = find(L.s ~= 0, 1, 'last');                       % exit at c_b2
+    verifyEqual(testCase, L.mu(:, e), L.mu(:, e + 1), 'AbsTol', 1e-6);
+
+    i = find(D.s ~= 0, 1);                               % delithiation jump
+    verifyEqual(testCase, D.c(i), ocv.c_sp(2), 'AbsTol', 1e-12);
+    verifyGreaterThan(testCase, D.mu(:, i) - D.mu(:, i - 1), 1e-3);
+    e = find(D.s ~= 0, 1, 'last');                       % exit at c_b1
+    verifyEqual(testCase, D.mu(:, e), D.mu(:, e + 1), 'AbsTol', 1e-6);
+
+    % Metastable sections lie between the binodal and spinodal points
+    verifyTrue(testCase, all(L.c(L.metastable) >= ocv.c_b(1) & L.c(L.metastable) <= ocv.c_sp(1)));
+    verifyTrue(testCase, all(D.c(D.metastable) <= ocv.c_b(2) & D.c(D.metastable) >= ocv.c_sp(2)));
+end
+end
