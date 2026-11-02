@@ -15,7 +15,7 @@ c_av = c_av(:);  s = s(:);  sig_ext = sig_ext(:);
 [Phi, jtr] = solve_algebraic(t0, c_av, s, sig_ext, Phi_guess, I, I_prev, t_block, params);
 
 c_dot   = -jtr.*params.Apart./(params.F*params.Vol);
-sig_dot = -params.k*(sig_ext - sig_ideal(I, params));
+sig_dot = solve_stress_rate(sig_ext, c_dot, params);   % implicit stress law
 
 % Derivatives of the algebraic variables by a forward difference. They are
 % not needed for consistency but give ODE15I a better first step.
