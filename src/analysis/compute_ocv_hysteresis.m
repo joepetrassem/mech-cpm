@@ -47,7 +47,7 @@ function ocv = compute_ocv_hysteresis(params, sig_ext, n_points)
 %         mu (n_sig x m), Phi (n_sig x m)
 %     ocv.phase_separation, ocv.sig_ext, ocv.c_b, ocv.c_sp, ocv.params
 %
-%   See also PLOT_OCV_HYSTERESIS, PLOT_GIBBS_MINIMISERS, PLOT_OCV_VOLTAGE.
+%   See also PLOT_OCV_HYSTERESIS, PLOT_GIBBS_MINIMISERS.
 
 if nargin < 1 || isempty(params),   params = default_parameters(); end
 if nargin < 2 || isempty(sig_ext),  sig_ext = 0; end

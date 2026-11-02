@@ -79,7 +79,7 @@ What to expect from each example:
 | `example_02_Lambda_sweep` | seconds | Electrode potential against SoC and time, and phase fractions, for `Lambda` = 0, 0.33, 0.66, 1.32; the plateau shrinks and tilts as `Lambda` grows. Prints the potential and gap for each run |
 | `example_03_sigma_y_sweep` | seconds | Electrode potential against SoC and time for `sigma_y` = 0, 0.2, 0.4, 0.8: larger `sigma_y` widens the gap between lithiation and delithiation (about 20 mV at `sigma_y` = 0 to about 60 mV at 0.8 near SoC = 0.5). Prints the simulated increase of the gap next to the prediction `2*sigma_y*R_g*T/F` (about 52 mV per unit); the two agree |
 | `example_04_crate_and_particles` | seconds | Electrode potential against SoC and time, with printed summaries, for a C-rate sweep, a number-of-groups sweep and per-segment C-rates |
-| `example_05_ocv_hysteresis` | 1 s | Paper Fig. 3a,b: single-phase (dark blue) and mixed-phase (blue) solution branches for `Lambda = 0` (flat mixed-phase line) and `Lambda = 0.99` (sloped line). Fig. 3c,d: lithiation and delithiation paths for `Lambda = 0` and for `Lambda = 0.99` with `sig_ext = -0.6` (red), 0 (black), 0.6 (blue): single phase up to the spinodal point (metastable beyond the binodal point), a vertical jump onto the mixed-phase line, phase separation to the far binodal point, the unstable single-phase states dotted, and arrowheads tangent to the paths showing the direction of charge. Each loop is also drawn as the equilibrium electrode potential `-mu*R_g*T/F` [mV]. Prints `c_b = [0.0707 0.9293]`, `c_sp = [0.2113 0.7887]` and jumps in mu of -0.415 / +0.415 for `Lambda = 0`; `c_b = [0.1570 0.8430]`, `c_sp = [0.2857 0.7143]` and jumps of -0.134 / +0.134 for `Lambda = 0.99`; and the potentials at c_avg = 0.5, which shift by about +-15.5 mV for `sig_ext = -+0.6`. Also plots `Lambda = 2 > Lambda_c`, where there is no phase separation and both paths follow `mu_chem - sig_ext` |
+| `example_05_ocv_hysteresis` | 1 s | Paper Fig. 3a,b: single-phase (dark blue) and mixed-phase (blue) solution branches for `Lambda = 0` (flat mixed-phase line) and `Lambda = 0.99` (sloped line). Fig. 3c,d: lithiation and delithiation paths for `Lambda = 0` and `Lambda = 0.99`, each with `sig_ext = -0.6` (red), 0 (black), 0.6 (blue): single phase up to the spinodal point (metastable beyond the binodal point), a vertical jump onto the mixed-phase line, phase separation to the far binodal point, the unstable single-phase states dotted, and arrowheads tangent to the paths showing the direction of charge. Also `Lambda = 2 > Lambda_c`, where there is no phase separation and both paths follow `mu_chem - sig_ext`. Prints `c_b = [0.0707 0.9293]`, `c_sp = [0.2113 0.7887]` and jumps in mu of -0.415 / +0.415 for `Lambda = 0`; `c_b = [0.1570 0.8430]`, `c_sp = [0.2857 0.7143]` and jumps of -0.134 / +0.134 for `Lambda = 0.99`; and the equilibrium potentials at c_avg = 0.5, which shift by about +-15.5 mV for `sig_ext = -+0.6` |
 | `example_06_critical_points_vs_Lambda` | seconds | Paper Fig. 2: spinodal and binodal points against `Lambda`, with `Lambda_c = 1.8` marked; prints the largest analytical vs grid-search difference (below 1e-3) |
 | `example_07_external_stress_comparison` | 1-2 min | Paper Figs. 4/6 (filling ratio of each particle group), Fig. 7 (electrode potential against SoC with and without external stress, `Lambda = 1.32`, `sigma_y = 0.8`) and the electrode potential against time. Prints both voltage summaries and the gap increase, about 41 mV (`2*0.8*R_g*T/F`) |
 
@@ -249,7 +249,6 @@ MechoCPM/
 |   |-- analysis/                   run_parameter_sweep, compute_ocv_hysteresis, voltage_summary
 |   `-- plotting/                   plot_voltage_soc, plot_voltage_time, plot_potential, plot_external_stress,
 |                                   plot_phase_fraction, plot_filling_ratio, plot_ocv_hysteresis, plot_gibbs_minimisers,
-|                                   plot_ocv_voltage,
 |                                   plot_results_comparison, new_figure, make_fixed_figure
 |-- examples/                       example_01 ... example_07, run_all_examples
 |-- tests/                          test_thermodynamics, test_solver, test_examples, test_plotting, data/original_code_reference.mat
@@ -281,7 +280,7 @@ For the electrode potential:
 | `voltage_summary(sols, labels, soc_points)` | Prints, and returns, `Phi` on the lithiation and delithiation branches at the given SoC (default 0.25, 0.5, 0.75), the gap between them and the range of `Phi` |
 | `compute_ocv_hysteresis` | Single-particle branches (single phase with stable/metastable/unstable parts, mixed-phase line) and the lithiation and delithiation paths, as `mu` and `Phi` |
 | `plot_gibbs_minimisers` | Fig. 3a,b: single- and mixed-phase branches |
-| `plot_ocv_hysteresis`, `plot_ocv_voltage` | Fig. 3c,d: cycling paths as `mu`, or as the equilibrium potential `-mu*R_g*T/F` [mV] |
+| `plot_ocv_hysteresis(ocv)`, `plot_ocv_hysteresis(ocv, [], 'Phi')` | Fig. 3c,d: cycling paths as `mu`, or as the equilibrium potential `-mu*R_g*T/F` [mV] |
 
 ## Publishing this repository on GitHub
 

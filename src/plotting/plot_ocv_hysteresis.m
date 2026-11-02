@@ -25,7 +25,7 @@ function ax = plot_ocv_hysteresis(ocv, ax, quantity)
 %   figure is resized or the limits are changed afterwards, call
 %   PLOT_OCV_HYSTERESIS again to redraw them.
 %
-%   See also COMPUTE_OCV_HYSTERESIS, PLOT_GIBBS_MINIMISERS, PLOT_OCV_VOLTAGE.
+%   See also COMPUTE_OCV_HYSTERESIS, PLOT_GIBBS_MINIMISERS.
 if nargin < 2 || isempty(ax), [~, ax] = make_fixed_figure(); end
 if nargin < 3 || isempty(quantity), quantity = 'mu'; end
 quantity = validatestring(quantity, {'mu', 'Phi'}, mfilename, 'quantity');

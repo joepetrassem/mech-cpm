@@ -5,7 +5,8 @@
 %   Fig. 3c,d : lithiation and delithiation paths, with the metastable
 %               single-phase sections, the jumps at the spinodal points and
 %               the unstable states (dotted)
-% The equilibrium electrode potential Phi = -mu*R_g*T/F is plotted alongside.
+% For the equilibrium electrode potential Phi = -mu*R_g*T/F instead of mu,
+% use plot_ocv_hysteresis(ocv, [], 'Phi').
 clear; close all;
 addpath(fullfile(fileparts(mfilename('fullpath')), '..'));
 setup_paths();
@@ -16,7 +17,7 @@ for Lambda = [0, 0.99]
     plot_gibbs_minimisers(ocv);
 end
 
-%% Fig. 3c: cycling without mechanics (Lambda = 0, sig_ext = = -0.6 (compressive), 0, 0.6 (tensile))
+%% Fig. 3c: cycling without mechanics (Lambda = 0), sig_ext = -0.6 (compressive), 0, 0.6 (tensile)
 ocv_c = compute_ocv_hysteresis(set_parameters(default_parameters(), 'Lambda', 0), [-0.6, 0, 0.6]);
 plot_ocv_hysteresis(ocv_c);
 
@@ -32,7 +33,6 @@ plot_ocv_hysteresis(ocv_d);
 % of mu_chem, which is now stable.
 ocv_e = compute_ocv_hysteresis(set_parameters(default_parameters(), 'Lambda', 2), [-0.6, 0, 0.6]);
 plot_ocv_hysteresis(ocv_e);
-plot_ocv_voltage(ocv_e);
 
 %% Log
 for o = {ocv_c, ocv_d}
