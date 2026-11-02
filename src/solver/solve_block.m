@@ -16,8 +16,10 @@ n_events = 0;
 
 while true
     s_now = s;   % frozen copy captured by the function handles below
-    opts = odeset('RelTol', params.RelTol, 'AbsTol', params.AbsTol, ...
-        'Events', @(tt, ww, yp) phase_change_events(tt, ww, yp, s_now, params));
+    opts = odeset('RelTol', params.RelTol, 'AbsTol', params.AbsTol);
+    if params.phase_separation        % otherwise every particle stays single phase
+        opts = odeset(opts, 'Events', @(tt, ww, yp) phase_change_events(tt, ww, yp, s_now, params));
+    end
     [t_p, w_p, te, ~, ie] = ode15i( ...
         @(tt, ww, yp) dae_residual(tt, ww, yp, s_now, I, I_prev, t_block, params), ...
         [t_start, tspan(2)], w0, wdot0, opts);

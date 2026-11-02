@@ -13,6 +13,10 @@ function ax = plot_ocv_hysteresis(ocv, ax, quantity)
 %   Colours: red for compressive (sig_ext < 0), black for sig_ext = 0, blue
 %   for tensile (sig_ext > 0).
 %
+%   Without phase separation (Lambda >= Lambda_c) the two paths coincide on
+%   mu_chem(c_avg) - sig_ext; one arrowhead per path is drawn, on the lower
+%   half of c_avg for lithiation and the upper half for delithiation.
+%
 %   PLOT_OCV_HYSTERESIS(ocv, ax, 'Phi') plots the equilibrium electrode
 %   potential Phi = -mu*R_g*T/F [mV] instead.
 %
@@ -60,7 +64,11 @@ else
     ylim(ax, ylim(ax));                      % freeze the automatic limits
     ylabel(ax, '$\Phi_{eq}$ [mV]', 'Interpreter', 'latex');
 end
-title(ax, sprintf('\\Lambda = %g', ocv.params.Lambda));
+if ocv.phase_separation
+    title(ax, sprintf('\\Lambda = %g', ocv.params.Lambda));
+else
+    title(ax, sprintf('\\Lambda = %g (no phase separation)', ocv.params.Lambda));
+end
 if n_sig > 1, legend(ax, 'Location', 'best'); end
 
 %% Arrowheads: on the single-phase section before the jump, and on the
@@ -68,10 +76,15 @@ if n_sig > 1, legend(ax, 'Location', 'best'); end
 delete(findall(ax, 'Tag', 'lith_arrow', '-or', 'Tag', 'delith_arrow'));   % findall: arrows are hidden from the legend
 drawnow;
 L = ocv.lith;  D = ocv.delith;  c_sp = ocv.c_sp;
-lith_sections   = {1:find(L.s ~= 0, 1) - 1, find(L.s ~= 0 & L.c >= c_sp(2))};
-delith_sections = {1:find(D.s ~= 0, 1) - 1, find(D.s ~= 0 & D.c <= c_sp(1))};
+if ocv.phase_separation
+    lith_sections   = {1:find(L.s ~= 0, 1) - 1, find(L.s ~= 0 & L.c >= c_sp(2))};
+    delith_sections = {1:find(D.s ~= 0, 1) - 1, find(D.s ~= 0 & D.c <= c_sp(1))};
+else                                         % the paths coincide: split them
+    lith_sections   = {find(L.c <= 0.5)};
+    delith_sections = {find(D.c >= 0.5)};
+end
 for j = 1:n_sig
-    for k = 1:2
+    for k = 1:numel(lith_sections)
         draw_tangent_arrow(ax, L.c, y_l{j}, lith_sections{k},   cols(j, :), 'lith_arrow');
         draw_tangent_arrow(ax, D.c, y_d{j}, delith_sections{k}, cols(j, :), 'delith_arrow');
     end

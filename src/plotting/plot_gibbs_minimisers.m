@@ -16,12 +16,18 @@ hold(ax, 'on'); grid(ax, 'on');
 j = which_stress;
 plot(ax, ocv.c_avg, ocv.mu_single(j, :), 'Color', [0 0 0.45], 'LineWidth', 1.5, ...
     'DisplayName', 'single phase');
-plot(ax, ocv.c_avg, ocv.mu_sep(j, :), 'Color', [0.3 0.55 1], 'LineWidth', 1.5, ...
-    'DisplayName', 'mixed phase');
+if ocv.phase_separation
+    plot(ax, ocv.c_avg, ocv.mu_sep(j, :), 'Color', [0.3 0.55 1], 'LineWidth', 1.5, ...
+        'DisplayName', 'mixed phase');
+end
 xlim(ax, [0 1]); ylim(ax, [-1.5, 1.5]);
 xticks(ax, 0:0.2:1); yticks(ax, -1.5:0.5:1.5);
 xlabel(ax, 'c_{avg}', 'Interpreter', 'tex');
 ylabel(ax, '\mu', 'Interpreter', 'tex');
-title(ax, sprintf('\\Lambda = %g', ocv.params.Lambda));
+if ocv.phase_separation
+    title(ax, sprintf('\\Lambda = %g', ocv.params.Lambda));
+else
+    title(ax, sprintf('\\Lambda = %g (no mixed-phase solution)', ocv.params.Lambda));
+end
 legend(ax, 'Location', 'best');
 end

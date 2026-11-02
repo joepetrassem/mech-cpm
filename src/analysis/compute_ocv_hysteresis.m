@@ -23,6 +23,11 @@ function ocv = compute_ocv_hysteresis(params, sig_ext, n_points)
 %                    mixed phase to c_b1, single phase to c_lo.
 %   The jump points appear twice in the path (before and after the switch).
 %
+%   Without phase separation (Lambda >= Lambda_c, c_b = c_sp = NaN) every
+%   state is single phase and stable, there is no mixed-phase line, and
+%   both paths follow mu_chem(c_avg) - sig_ext (the lithiation path from
+%   c_lo to c_hi, the delithiation path back), so they coincide.
+%
 %   Inputs (all optional)
 %     params    parameter struct (default: default_parameters())
 %     sig_ext   scalar or vector of scaled external stresses (default 0)
@@ -40,7 +45,7 @@ function ocv = compute_ocv_hysteresis(params, sig_ext, n_points)
 %     ocv.lith, ocv.delith              cycling paths in travel order, with fields
 %         c (1 x m), s (1 x m, phase state), metastable (1 x m, logical),
 %         mu (n_sig x m), Phi (n_sig x m)
-%     ocv.sig_ext, ocv.c_b, ocv.c_sp, ocv.params
+%     ocv.phase_separation, ocv.sig_ext, ocv.c_b, ocv.c_sp, ocv.params
 %
 %   See also PLOT_OCV_HYSTERESIS, PLOT_GIBBS_MINIMISERS, PLOT_OCV_VOLTAGE.
 
@@ -93,6 +98,13 @@ delith_c = [seg(c_hi, c_b(2)), seg(c_b(2), c_sp(2)), seg(c_sp(2), c_b(1)), seg(c
 delith_s = [zeros(1, 2*m), -ones(1, m), zeros(1, m)];
 delith_meta = [false(1, m), true(1, m), false(1, 2*m)];
 
+if ~params.phase_separation                  % single phase throughout
+    lith_c   = linspace(c_lo, c_hi, 4*m);
+    delith_c = fliplr(lith_c);
+    [lith_s, delith_s]       = deal(zeros(1, 4*m));
+    [lith_meta, delith_meta] = deal(false(1, 4*m));
+end
+
 ocv.lith   = make_path(lith_c,   lith_s,   lith_meta,   n_sig, mu_of, VT);
 ocv.delith = make_path(delith_c, delith_s, delith_meta, n_sig, mu_of, VT);
 
@@ -106,6 +118,7 @@ ocv.mu_lith      = mu_lith;
 ocv.mu_delith    = mu_delith;
 ocv.Phi_lith     = -VT*mu_lith;
 ocv.Phi_delith   = -VT*mu_delith;
+ocv.phase_separation = params.phase_separation;
 ocv.sig_ext      = sig_ext;
 ocv.c_b          = c_b;
 ocv.c_sp         = c_sp;

@@ -26,6 +26,14 @@ ocv_d = compute_ocv_hysteresis(set_parameters(default_parameters(), 'Lambda', 0.
 plot_ocv_hysteresis(ocv_d);
 
 
+%% Above the critical coupling (Lambda = 2 > Lambda_c = 1.8): no phase separation
+% The particle lithiates as a solid solution: lithiation and delithiation
+% coincide on mu_chem(c_avg) - sig_ext, including the decreasing section
+% of mu_chem, which is now stable.
+ocv_e = compute_ocv_hysteresis(set_parameters(default_parameters(), 'Lambda', 2), [-0.6, 0, 0.6]);
+plot_ocv_hysteresis(ocv_e);
+plot_ocv_voltage(ocv_e);
+
 %% Log
 for o = {ocv_c, ocv_d}
     ocv = o{1};
@@ -42,3 +50,7 @@ end
 fprintf('Lambda = 0.99, Phi_eq at c_avg = 0.5 for sig_ext = %s:\n', mat2str(ocv_d.sig_ext'));
 fprintf('  lithiation   %s mV\n  delithiation %s mV\n', ...
     mat2str(round(ocv_d.Phi_lith(:, k)', 2)), mat2str(round(ocv_d.Phi_delith(:, k)', 2)));
+fprintf(['Lambda = 2 (Lambda_c = %.4g): phase separation %s; max |mu_lith - mu_delith| = %.1e, ' ...
+         'max |mu - (mu_chem - sig_ext)| = %.1e\n'], ocv_e.params.Lambda_c, ...
+    mat2str(ocv_e.phase_separation), max(abs(ocv_e.mu_lith(:) - ocv_e.mu_delith(:))), ...
+    max(max(abs(ocv_e.mu_lith - (ocv_e.mu_chem - ocv_e.sig_ext)))));

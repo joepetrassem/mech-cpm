@@ -6,16 +6,30 @@ function params = compute_critical_points(params)
 %   params.binodal_method: 'analytical', 'gridsearch' or 'both') and the
 %   spinodal points c_sp = [c_s1, c_s2] from FIND_SPINODAL_POINTS. Otherwise
 %   the values already in params are used unchanged.
+%
+%   If there are no spinodal points (Lambda >= Lambda_c for the default
+%   mu_chem), mechanics suppresses phase separation: c_b = c_sp = [NaN NaN],
+%   params.phase_separation = false, and the particles lithiate as a solid
+%   solution with mu = mu_chem(c_avg) - sig_ext. A message is printed if
+%   params.verbose is true.
 
 if params.compute_critical_points
+    state = warning('off', 'find_spinodal_points:stable');
     c_sp = find_spinodal_points(params);
+    warning(state);
+
     if any(isnan(c_sp))
-        error('MechoCPM:noSpinodal', ...
-            ['No spinodal region for Lambda = %g: mechanics suppresses phase ' ...
-             'separation, so there are no binodal points either. Reduce Lambda ' ...
-             '(Lambda_c = %.4g for the default mu_chem and nu_bar = %g).'], ...
-            params.Lambda, params.Lambda_c, params.nu_bar);
+        params.c_b  = [NaN, NaN];
+        params.c_sp = [NaN, NaN];
+        params = finalise_parameters(params);
+        if params.verbose
+            fprintf(['No phase separation: Lambda = %g >= Lambda_c = %.4g, so mechanics ' ...
+                     'suppresses it.\n  Particles stay single phase (solid solution), ' ...
+                     'mu = mu_chem(c_avg) - sig_ext.\n'], params.Lambda, params.Lambda_c);
+        end
+        return
     end
+
     c_b = find_binodal_points(params, ...
         'Method',       params.binodal_method, ...
         'GridPoints',   params.binodal_grid_points, ...
@@ -31,8 +45,10 @@ if params.compute_critical_points
 end
 params.c_b  = sort(params.c_b(:)');
 params.c_sp = sort(params.c_sp(:)');
+params = finalise_parameters(params);
 
-if ~(params.c_b(1) < params.c_sp(1) && params.c_sp(2) < params.c_b(2))
+if params.phase_separation && ...
+        ~(params.c_b(1) < params.c_sp(1) && params.c_sp(2) < params.c_b(2))
     warning('MechoCPM:criticalOrder', ...
         'Expected c_b1 < c_s1 < c_s2 < c_b2; got c_b = [%.4f %.4f], c_sp = [%.4f %.4f].', ...
         params.c_b, params.c_sp);
