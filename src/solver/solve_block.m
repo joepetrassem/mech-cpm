@@ -1,5 +1,5 @@
 function [t, w, s_hist, n_events] = solve_block(tspan, w0, wdot0, s, I, I_prev, params)
-%SOLVE_BLOCK Integrate one constant-current block with ODE15I.
+%SOLVE_BLOCK Integrate one constant-current block with ODE15I (fully implicit DAE).
 %
 %   Integrates until either the end of the block or a phase-change event.
 %   At each event the phase state of the affected particle(s) is updated,
@@ -65,24 +65,5 @@ while true
     w_end   = w_p(end, :)';
     [w0, wdot0] = consistent_initial_conditions(t_start, w_end(1:n), s, ...
         w_end(2*n+1:3*n), w_end(end), I, I_prev, t_block, params);
-end
-end
-
-function s = update_phase_state(s, event_ids)
-% homogeneous -> core-shell: crossing spin point 1 gives s = +1 (lithiating
-% morphology), spin point 2 gives s = -1 (delithiating morphology).
-% core-shell -> homogeneous: reaching either star point.
-for e = event_ids(:)'
-    p     = ceil(e/2);
-    which = e - 2*(p - 1);
-    if s(p) == 0
-        if which == 1
-            s(p) = 1;
-        else
-            s(p) = -1;
-        end
-    else
-        s(p) = 0;
-    end
 end
 end

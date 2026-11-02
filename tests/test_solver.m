@@ -241,3 +241,51 @@ for j = 1:3*n + 1
     verifyEqual(testCase, full(Jp(:, j)), fd, 'RelTol', 1e-4, 'AbsTol', 1e-9*max(1, norm(fd, inf)));
 end
 end
+
+function test_solver_option_validated(testCase)
+p = set_parameters(default_parameters(), 'solver', 'ode15i');
+verifyEqual(testCase, p.solver, 'ode15i');
+verifyEqual(testCase, default_parameters().solver, 'ode15s');
+verifyError(testCase, @() set_parameters(default_parameters(), 'solver', 'rk4'), 'MechoCPM:params');
+end
+
+function test_reduced_rhs_satisfies_dae_residual(testCase)
+% The reduced ODE (ode15s) and the fully implicit DAE (ode15i) describe the
+% same model: the rates and algebraic variables returned by REDUCED_RHS make
+% every row of DAE_RESIDUAL vanish.
+p = set_parameters(default_parameters(), 'n_groups', 4, 'Lambda', 0.99, 'sigma_y', 0.3, ...
+    'verbose', false);
+p = compute_critical_points(build_particle_population(p));
+n = p.n_groups;
+c   = [0.2; 0.4; 0.6; 0.8]*p.c_m;
+s   = [0; 1; -1; 0];
+sig = [-0.3; -0.1; 0.2; 0.05];
+I = -1e-4;
+[ydot, Phi, jtr] = reduced_rhs(50, [c; sig], s, 0, I, 0, 0, p);
+w    = [c; jtr; sig; Phi];
+wdot = [ydot(1:n); zeros(n, 1); ydot(n+1:2*n); 0];    % jtr and Phi rates do not enter F
+res  = dae_residual(50, w, wdot, s, I, 0, 0, p);
+verifyLessThan(testCase, norm(res(1:n)), 1e-12*norm(ydot(1:n)));     % Li conservation
+verifyLessThan(testCase, norm(res(n+1:2*n)), 1e-12*max(abs(jtr)));   % Butler-Volmer
+verifyLessThan(testCase, norm(res(2*n+1:3*n)), 1e-9);                % stress law
+verifyLessThan(testCase, abs(res(end)), 1e-9*abs(I));                % current conservation
+end
+
+function test_ode15s_matches_ode15i(testCase)
+% Both formulations give the same electrode potential, phase-change events
+% and external stresses (cases where ode15i also succeeds).
+for sigma_y = [0, 0.2]
+    args = {'n_groups', 3, 'c_rate', 0.5, 'Lambda', 0.33, 'sigma_y', sigma_y, 'verbose', false};
+    a = run_simulation(args{:}, 'solver', 'ode15s');
+    b = run_simulation(args{:}, 'solver', 'ode15i');
+    verifyEqual(testCase, a.n_events, b.n_events);
+    [ta, ia] = unique(a.t);  [tb, ib] = unique(b.t);
+    tg = linspace(0, min(ta(end), tb(end)), 4000);
+    dPhi = interp1(ta, a.Phi(ia), tg) - interp1(tb, b.Phi(ib), tg);
+    dsig = interp1(ta, a.sig_ext(ia, :), tg) - interp1(tb, b.sig_ext(ib, :), tg);
+    verifyLessThan(testCase, sqrt(mean(dPhi.^2)), 1e-4, ...
+        sprintf('Phi differs between ode15s and ode15i (sigma_y = %g)', sigma_y));
+    verifyLessThan(testCase, sqrt(mean(dsig(:).^2)), 1e-3);
+end
+end
+

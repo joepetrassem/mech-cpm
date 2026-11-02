@@ -10,10 +10,13 @@ function sol = run_simulation(varargin)
 %   SET_PARAMETERS for the accepted aliases).
 %
 %   The model is the ensemble DAE of the paper ("Ensemble of interacting
-%   particles"): average
+%   particles"). It is solved, according to params.solver, either as a
+%   reduced ODE in (c_avg, sig_ext) with ODE15S (default; SOLVE_BLOCK_ODE15S)
+%   or as the fully implicit DAE with ODE15I (SOLVE_BLOCK); see
+%   docs/solver_formulation.md. The variables are the average
 %   concentrations c_avg^(i), reaction currents j_tr^(i), external stresses
-%   sig_ext^(i) and the electrode potential Phi, solved with ODE15I. Phase
-%   changes are located with event functions (SOLVE_BLOCK).
+%   sig_ext^(i) and the electrode potential Phi. Phase changes are located
+%   with event functions in either case.
 %
 %   The external stress of each particle starts at zero and follows the
 %   motion of that particle's surface (SIG_IDEAL, SURFACE_VELOCITY): it is
@@ -83,18 +86,27 @@ for b = 1:numel(protocol.I)
     end
 
     sig_ext = w(2*n+1:3*n);                  % continuous across blocks
+    tspan   = protocol.t_split(b:b+1);
 
-    tspan = protocol.t_split(b:b+1);
-    [w0, wdot0] = consistent_initial_conditions(tspan(1), w(1:n), s, ...
-        sig_ext, w(end), I, I_prev, tspan(1), params);
-
-    if params.verbose
-        res0 = dae_residual(tspan(1), w0, wdot0, s, I, I_prev, tspan(1), params);
-        fprintf('  block %d/%d: I = %+.3e A, %.4g h, |res(t0)| = %.1e\n', ...
-            b, numel(protocol.I), I, diff(tspan)/3600, norm(res0));
+    if strcmpi(params.solver, 'ode15s')
+        % Reduced ODE in (c_avg, sig_ext): no consistent initial conditions needed
+        if params.verbose
+            fprintf('  block %d/%d: I = %+.3e A, %.4g h (ode15s)\n', ...
+                b, numel(protocol.I), I, diff(tspan)/3600);
+        end
+        [t_b, w_b, s_b, ne] = solve_block_ode15s(tspan, w(1:n), sig_ext, w(end), ...
+            s, I, I_prev, params);
+    else
+        % Fully implicit DAE in (c_avg, jtr, sig_ext, Phi)
+        [w0, wdot0] = consistent_initial_conditions(tspan(1), w(1:n), s, ...
+            sig_ext, w(end), I, I_prev, tspan(1), params);
+        if params.verbose
+            res0 = dae_residual(tspan(1), w0, wdot0, s, I, I_prev, tspan(1), params);
+            fprintf('  block %d/%d: I = %+.3e A, %.4g h (ode15i), |res(t0)| = %.1e\n', ...
+                b, numel(protocol.I), I, diff(tspan)/3600, norm(res0));
+        end
+        [t_b, w_b, s_b, ne] = solve_block(tspan, w0, wdot0, s, I, I_prev, params);
     end
-
-    [t_b, w_b, s_b, ne] = solve_block(tspan, w0, wdot0, s, I, I_prev, params);
     n_events = n_events + ne;
 
     if params.verbose

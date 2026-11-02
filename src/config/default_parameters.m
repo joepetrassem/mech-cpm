@@ -78,6 +78,10 @@ params.binodal_initial_guess = [0.1, 0.9];   % fsolve starting point [c_c, c_s]
 params.binodal_c_avg         = 0.51;         % c_avg used in the minimisation
 
 %% Solver settings
+params.solver               = 'ode15s';   % 'ode15s': reduced ODE in (c_avg, sig_ext), Phi, jtr and
+                                          %   dsig/dt solved at each evaluation (default, robust);
+                                          % 'ode15i': fully implicit DAE in (c_avg, jtr, sig_ext, Phi)
+                                          % See docs/solver_formulation.md.
 params.RelTol               = 1e-6;
 params.AbsTol               = 1e-8;
 params.tau_I_default        = 2;     % current-ramp time constant [s]
