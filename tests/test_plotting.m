@@ -16,9 +16,10 @@ set(groot, 'defaultFigureVisible', testCase.TestData.visible);
 end
 
 function test_arrows_tangent_and_in_direction_of_travel(testCase)
-cases = {0, 0, 'mu'; 0.99, [-0.6, 0, 0.6], 'mu'; 0.99, [-0.6, 0, 0.6], 'Phi'};
+cases = {0, 0, 'mu'; 0.99, [-0.6, 0, 0.6], 'mu'; 0.99, [-0.6, 0, 0.6], 'Phi'; ...
+         2, [-0.6, 0, 0.6], 'mu'; 2, [-0.6, 0, 0.6], 'Phi'};   % 2 > Lambda_c: no phase separation
 for i = 1:size(cases, 1)
-    p = set_parameters(default_parameters(), 'Lambda', cases{i, 1});
+    p = set_parameters(default_parameters(), 'Lambda', cases{i, 1}, 'verbose', false);
     ocv = compute_ocv_hysteresis(p, cases{i, 2});
     ax = plot_ocv_hysteresis(ocv, [], cases{i, 3});
     if strcmp(cases{i, 3}, 'Phi')
@@ -26,9 +27,9 @@ for i = 1:size(cases, 1)
     else
         scale = 1;
     end
-    n_sig = numel(ocv.sig_ext);
-    check_arrows(testCase, ax, 'lith_arrow',   ocv.lith,   scale, 2*n_sig);
-    check_arrows(testCase, ax, 'delith_arrow', ocv.delith, scale, 2*n_sig);
+    n_per_path = numel(ocv.sig_ext)*(1 + ocv.phase_separation);   % 2 per stress, 1 without separation
+    check_arrows(testCase, ax, 'lith_arrow',   ocv.lith,   scale, n_per_path);
+    check_arrows(testCase, ax, 'delith_arrow', ocv.delith, scale, n_per_path);
     close(ancestor(ax, 'figure'));
 end
 end

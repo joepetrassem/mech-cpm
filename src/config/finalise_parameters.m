@@ -8,6 +8,10 @@ function params = finalise_parameters(params)
 %     Lambda_c = 3*(1 + nu_bar)/(1 + 3*nu_bar)            Lambda at which A_int = 1
 %                (for the default mu_chem, min mu_chem' = -2, phase separation
 %                 is suppressed for Lambda >= Lambda_c)
+%     phase_separation = true if the critical points c_b and c_sp are finite.
+%                It is false when mechanics suppresses phase separation, in
+%                which case c_b = c_sp = [NaN NaN] and every particle stays
+%                single phase (solid solution).
 
 params.nu_bar   = params.nu/(1 - 2*params.nu);
 params.R_gT     = params.R_g*params.T;
@@ -34,8 +38,16 @@ num(params.sigma_R,  'sigma_R',  {'scalar', 'real', 'finite', 'nonnegative'});
 num(params.soc_waypoints, 'soc_waypoints', {'vector', 'real', '>', 0, '<', 1});
 num(params.c_rate,   'c_rate',   {'vector', 'real', 'finite', 'positive'});
 num(params.rest_time,'rest_time',{'scalar', 'real', 'finite', 'nonnegative'});
-num(params.c_b,      'c_b',      {'numel', 2, 'real', '>', 0, '<', 1});
-num(params.c_sp,     'c_sp',     {'numel', 2, 'real', '>', 0, '<', 1});
+num(params.c_b,      'c_b',      {'numel', 2, 'real'});
+num(params.c_sp,     'c_sp',     {'numel', 2, 'real'});
+params.phase_separation = all(isfinite([params.c_b(:); params.c_sp(:)]));
+if params.phase_separation
+    num(params.c_b,  'c_b',  {'>', 0, '<', 1});
+    num(params.c_sp, 'c_sp', {'>', 0, '<', 1});
+elseif ~all(isnan([params.c_b(:); params.c_sp(:)]))
+    error('MechoCPM:params', ...
+        'c_b and c_sp must both be finite, or both [NaN NaN] for no phase separation.');
+end
 num(params.binodal_grid_points,   'binodal_grid_points',   {'scalar', 'integer', '>=', 10});
 num(params.binodal_tol,           'binodal_tol',           {'scalar', 'real', 'positive'});
 num(params.binodal_initial_guess, 'binodal_initial_guess', {'numel', 2, 'real'});

@@ -54,7 +54,12 @@ above = set_parameters(p, 'Lambda', 1.01*p.Lambda_c);
 c_sp = verifyWarning(testCase, @() find_spinodal_points(above), ...
     'find_spinodal_points:stable');
 verifyTrue(testCase, all(isnan(c_sp)));
-verifyError(testCase, @() compute_critical_points(above), 'MechoCPM:noSpinodal');
+% Above Lambda_c the particle is a solid solution: no error, no warning,
+% critical points NaN and phase_separation false.
+pc = verifyWarningFree(testCase, @() compute_critical_points(set_parameters(above, 'verbose', false)));
+verifyTrue(testCase, all(isnan([pc.c_b, pc.c_sp])));
+verifyFalse(testCase, pc.phase_separation);
+verifyTrue(testCase, default_parameters().phase_separation);
 end
 
 function test_binodal_common_tangent_without_mechanics(testCase)
@@ -212,5 +217,26 @@ for Lambda = [0, 0.99]
     % Metastable sections lie between the binodal and spinodal points
     verifyTrue(testCase, all(L.c(L.metastable) >= ocv.c_b(1) & L.c(L.metastable) <= ocv.c_sp(1)));
     verifyTrue(testCase, all(D.c(D.metastable) <= ocv.c_b(2) & D.c(D.metastable) >= ocv.c_sp(2)));
+end
+end
+
+function test_ocv_without_phase_separation(testCase)
+% For Lambda >= Lambda_c the particle stays single phase: lithiation and
+% delithiation coincide on mu_chem(c_avg) - sig_ext, independently of Lambda,
+% every state is stable and there is no mixed-phase line.
+ref = [];
+for Lambda = [2, 3]          % (exactly at Lambda_c the outcome depends on rounding)
+    p = set_parameters(default_parameters(), 'Lambda', Lambda, 'verbose', false);
+    ocv = compute_ocv_hysteresis(p, [-0.6, 0, 0.6], 301);
+    verifyFalse(testCase, ocv.phase_separation);
+    verifyEqual(testCase, ocv.mu_lith, ocv.mu_delith, 'AbsTol', 1e-14);
+    verifyEqual(testCase, ocv.mu_lith, mu_chem(ocv.c_avg) - ocv.sig_ext, 'AbsTol', 1e-12);
+    verifyTrue(testCase, all(ocv.single_state == 0));
+    verifyTrue(testCase, all(isnan(ocv.mu_sep(:))));
+    verifyTrue(testCase, all(ocv.lith.s == 0) && all(ocv.delith.s == 0));
+    verifyTrue(testCase, all(diff(ocv.lith.c) > 0) && all(diff(ocv.delith.c) < 0));
+    verifyEqual(testCase, ocv.lith.mu, fliplr(ocv.delith.mu), 'AbsTol', 1e-12);
+    if isempty(ref), ref = ocv.mu_lith; end
+    verifyEqual(testCase, ocv.mu_lith, ref, 'AbsTol', 1e-14);     % independent of Lambda
 end
 end

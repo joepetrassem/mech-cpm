@@ -49,8 +49,13 @@ n        = params.n_groups;
 if params.verbose
     fprintf('MechoCPM: %d size groups, Lambda = %g (A_int = %.4g), sigma_y = %g\n', ...
         n, params.Lambda, params.A_int, params.sigma_y);
-    fprintf('  binodal points [%.4f %.4f], spinodal points [%.4f %.4f]\n', ...
-        params.c_b, params.c_sp);
+    if params.phase_separation
+        fprintf('  binodal points [%.4f %.4f], spinodal points [%.4f %.4f]\n', ...
+            params.c_b, params.c_sp);
+    else
+        fprintf('  no phase separation (Lambda >= Lambda_c = %.4g): solid solution\n', ...
+            params.Lambda_c);
+    end
 end
 
 % Initial state: uniform concentration, single-phase particles, no external stress

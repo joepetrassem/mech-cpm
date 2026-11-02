@@ -128,3 +128,22 @@ verifyEqual(testCase, s(2).gap - s(1).gap, 2*0.4*VT*ones(1, 3), 'AbsTol', 0.05);
 verifyEqual(testCase, s(1).Phi_range, 1000*[min(sol0.Phi), max(sol0.Phi)], 'AbsTol', 1e-12);
 end
 
+function test_cycle_without_phase_separation(testCase)
+% Lambda > Lambda_c: the ensemble runs as a solid solution, with no
+% phase-change events, every particle single phase, and charge conserved.
+% A hysteretic external stress still widens the gap by 2*sigma_y*R_g*T/F.
+common = {'n_groups', 3, 'c_rate', 0.5, 'Lambda', 2, 'verbose', false};
+sol0 = run_simulation(common{:}, 'sigma_y', 0);
+sol1 = run_simulation(common{:}, 'sigma_y', 0.4);
+for sol = {sol0, sol1}
+    r = sol{1};
+    verifyFalse(testCase, r.params.phase_separation);
+    verifyEqual(testCase, r.n_events, 0);
+    verifyTrue(testCase, all(r.s(:) == 0));
+    verifyTrue(testCase, all(isfinite(r.Phi)));
+    verifyEqual(testCase, r.SOC(end) - r.SOC(1), -trapz(r.t, r.I)/r.params.Q, 'AbsTol', 1e-3);
+end
+s = voltage_summary({sol0, sol1}, {'0', '0.4'}, [0.3, 0.5, 0.7]);
+VT = 1000*sol0.params.R_gT/sol0.params.F;
+verifyEqual(testCase, s(2).gap - s(1).gap, 2*0.4*VT*ones(1, 3), 'AbsTol', 0.05);
+end
