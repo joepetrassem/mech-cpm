@@ -27,7 +27,12 @@ n_events = 0;
 
 while true
     s_now = s;
-    opts = odeset('RelTol', params.RelTol, 'AbsTol', params.AbsTol);
+    if isempty(params.max_step)
+        max_step = diff(tspan)/1000;           % resolve the voltage curve in the output
+    else
+        max_step = params.max_step;
+    end
+    opts = odeset('RelTol', params.RelTol, 'AbsTol', params.AbsTol, 'MaxStep', max_step);
     if params.phase_separation
         opts = odeset(opts, 'Events', @(tt, yy) phase_change_events(tt, yy, [], s_now, params));
     end

@@ -73,6 +73,9 @@ end
 if ~any(strcmpi(params.size_distribution, {'uniform', 'lognormal'}))
     error('MechoCPM:params', 'size_distribution must be ''uniform'' or ''lognormal''.');
 end
+if ~isempty(params.max_step)
+    num(params.max_step, 'max_step', {'scalar', 'real', 'positive'});
+end
 if ~any(strcmpi(params.solver, {'ode15s', 'ode15i'}))
     error('MechoCPM:params', 'solver must be ''ode15s'' or ''ode15i''.');
 end

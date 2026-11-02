@@ -83,6 +83,8 @@ params.solver               = 'ode15s';   % 'ode15s': reduced ODE in (c_avg, sig
                                           % 'ode15i': fully implicit DAE in (c_avg, jtr, sig_ext, Phi)
                                           % See docs/solver_formulation.md.
 params.RelTol               = 1e-6;
+params.max_step             = [];    % ode15s maximum step [s]; empty: 1/1000 of each block, so
+                                     % that output points resolve the voltage curve (SoC ~0.001)
 params.AbsTol               = 1e-8;
 params.tau_I_default        = 2;     % current-ramp time constant [s]
 params.tau_I_reversal       = 10;    % ramp time constant when the current changes sign [s]
