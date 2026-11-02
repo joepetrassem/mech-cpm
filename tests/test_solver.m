@@ -164,10 +164,6 @@ s = voltage_summary({sol0, sol1}, {'0', '0.4'}, [0.3, 0.5, 0.7]);
 VT = 1000*sol0.params.R_gT/sol0.params.F;
 verifyEqual(testCase, s(2).gap - s(1).gap, 2*0.4*VT*ones(1, 3), 'AbsTol', 0.05);
 end
-s = voltage_summary({sol0, sol1}, {'0', '0.4'}, [0.3, 0.5, 0.7]);
-VT = 1000*sol0.params.R_gT/sol0.params.F;
-verifyEqual(testCase, s(2).gap - s(1).gap, 2*0.4*VT*ones(1, 3), 'AbsTol', 0.05);
-end
 
 function test_external_stress_switching_window(testCase)
 % Paper, "A simple model for the mechanical response of the surrounding
@@ -245,5 +241,3 @@ for j = 1:3*n + 1
     verifyEqual(testCase, full(Jp(:, j)), fd, 'RelTol', 1e-4, 'AbsTol', 1e-9*max(1, norm(fd, inf)));
 end
 end
-end
-

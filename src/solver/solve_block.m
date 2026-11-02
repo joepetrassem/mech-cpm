@@ -19,6 +19,7 @@ while true
     opts = odeset('RelTol', params.RelTol, 'AbsTol', params.AbsTol, ...
         'Jacobian', @(tt, ww, yp) dae_jacobian(tt, ww, yp, s_now, I, I_prev, t_block, params));
     residual = @(tt, ww, yp) dae_residual(tt, ww, yp, s_now, I, I_prev, t_block, params);
+    lastwarn('');                     % to report ode15i's own message if it stops early
     if params.phase_separation
         opts = odeset(opts, 'Events', @(tt, ww, yp) phase_change_events(tt, ww, yp, s_now, params));
         [t_p, w_p, te, ~, ie] = ode15i(residual, [t_start, tspan(2)], w0, wdot0, opts);
@@ -37,9 +38,17 @@ while true
         break
     end
     if isempty(ie)
+        n_  = params.n_groups;
+        wl  = w_p(end, :)';
+        msg = lastwarn;
+        if isempty(msg), msg = '(no warning)'; end
         error('MechoCPM:solverStopped', ...
-            'ode15i stopped at t = %.6g s (block ends at %.6g s) without an event.', ...
-            t_p(end), tspan(2));
+            ['ode15i stopped at t = %.6g s (block ends at %.6g s, started at %.6g s) without an event.\n' ...
+             '  ode15i: %s\n  last step %.3g s; c_avg/c_m in [%.4f, %.4f]; sig_ext in [%.4f, %.4f]; ' ...
+             'Phi = %.4f V; phase states %s'], ...
+            t_p(end), tspan(2), t_block, msg, t_p(end) - t_p(max(end - 1, 1)), ...
+            min(wl(1:n_))/params.c_m, max(wl(1:n_))/params.c_m, ...
+            min(wl(2*n_+1:3*n_)), max(wl(2*n_+1:3*n_)), wl(end), mat2str(s_now'));
     end
 
     % Handle every event that fired at the stopping time
