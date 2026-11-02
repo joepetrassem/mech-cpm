@@ -10,14 +10,19 @@ function sol = run_simulation(varargin)
 %   SET_PARAMETERS for the accepted aliases).
 %
 %   The model is the ensemble DAE of the paper ("Ensemble of interacting
-%   particles"): average
+%   particles"). It is solved, according to params.solver, either as a
+%   reduced ODE in (c_avg, sig_ext) with ODE15S (default; SOLVE_BLOCK_ODE15S)
+%   or as the fully implicit DAE with ODE15I (SOLVE_BLOCK); see
+%   docs/solver_formulation.md. The variables are the average
 %   concentrations c_avg^(i), reaction currents j_tr^(i), external stresses
-%   sig_ext^(i) and the electrode potential Phi, solved with ODE15I. Phase
-%   changes are located with event functions (SOLVE_BLOCK).
+%   sig_ext^(i) and the electrode potential Phi. Phase changes are located
+%   with event functions in either case.
 %
-%   At the start of each current block the external stress of every
-%   particle is reset to sign(I)*sigma_y: the surrounding medium is assumed
-%   to have yielded in the direction of the new current (zero during rest).
+%   The external stress of each particle starts at zero and follows the
+%   motion of that particle's surface (SIG_IDEAL, SURFACE_VELOCITY): it is
+%   continuous across current blocks, and after a reversal it unloads
+%   elastically from one yield value to the other over a change in filling
+%   fraction of about 2*sigma_y/(Lambda*(1 + 3*nu_bar)).
 %
 %   Output fields
 %     t        time [s]                             (nt x 1)
@@ -45,6 +50,8 @@ params   = build_particle_population(params);
 params   = compute_critical_points(params);
 protocol = build_current_protocol(params);
 n        = params.n_groups;
+
+check_stress_regime(params);
 
 if params.verbose
     fprintf('MechoCPM: %d size groups, Lambda = %g (A_int = %.4g), sigma_y = %g\n', ...
@@ -78,20 +85,28 @@ for b = 1:numel(protocol.I)
         params.tau_I = params.tau_I_default;
     end
 
-    % External stress is reset to the yielded state of the new current
-    sig_ext = sign(I)*params.sigma_y*ones(n, 1);
+    sig_ext = w(2*n+1:3*n);                  % continuous across blocks
+    tspan   = protocol.t_split(b:b+1);
 
-    tspan = protocol.t_split(b:b+1);
-    [w0, wdot0] = consistent_initial_conditions(tspan(1), w(1:n), s, ...
-        sig_ext, w(end), I, I_prev, tspan(1), params);
-
-    if params.verbose
-        res0 = dae_residual(tspan(1), w0, wdot0, s, I, I_prev, tspan(1), params);
-        fprintf('  block %d/%d: I = %+.3e A, %.4g h, |res(t0)| = %.1e\n', ...
-            b, numel(protocol.I), I, diff(tspan)/3600, norm(res0));
+    if strcmpi(params.solver, 'ode15s')
+        % Reduced ODE in (c_avg, sig_ext): no consistent initial conditions needed
+        if params.verbose
+            fprintf('  block %d/%d: I = %+.3e A, %.4g h (ode15s)\n', ...
+                b, numel(protocol.I), I, diff(tspan)/3600);
+        end
+        [t_b, w_b, s_b, ne] = solve_block_ode15s(tspan, w(1:n), sig_ext, w(end), ...
+            s, I, I_prev, params);
+    else
+        % Fully implicit DAE in (c_avg, jtr, sig_ext, Phi)
+        [w0, wdot0] = consistent_initial_conditions(tspan(1), w(1:n), s, ...
+            sig_ext, w(end), I, I_prev, tspan(1), params);
+        if params.verbose
+            res0 = dae_residual(tspan(1), w0, wdot0, s, I, I_prev, tspan(1), params);
+            fprintf('  block %d/%d: I = %+.3e A, %.4g h (ode15i), |res(t0)| = %.1e\n', ...
+                b, numel(protocol.I), I, diff(tspan)/3600, norm(res0));
+        end
+        [t_b, w_b, s_b, ne] = solve_block(tspan, w0, wdot0, s, I, I_prev, params);
     end
-
-    [t_b, w_b, s_b, ne] = solve_block(tspan, w0, wdot0, s, I, I_prev, params);
     n_events = n_events + ne;
 
     if params.verbose
@@ -116,6 +131,25 @@ sol.runtime  = toc(timer);
 if params.verbose
     fprintf('  done: %d phase-change events, Phi in [%+.2f, %+.2f] mV, %.1f s\n', ...
         n_events, 1000*min(sol.Phi), 1000*max(sol.Phi), sol.runtime);
+end
+end
+
+function check_stress_regime(params)
+% The plastic-shell model behaves as a rigid-perfectly plastic shell when
+% u0 << swelling rate and Lambda*(1+3*nu_bar)*u0 << k*sigma_y. Warn otherwise.
+if params.Lambda == 0 || params.sigma_y == 0, return; end
+rate = min(params.c_rate)/3600;                    % filling-fraction rate [1/s]
+K = params.Lambda*(1 + 3*params.nu_bar);
+if params.u0_used > 0.1*rate
+    warning('MechoCPM:u0Regime', ...
+        ['u0 = %g 1/s is not small compared with the swelling rate C-rate/3600 = %g 1/s: ' ...
+         'the external stress will not reach +-sigma_y. Reduce u0.'], params.u0_used, rate);
+end
+if K*params.u0_used > 0.1*params.k*params.sigma_y
+    warning('MechoCPM:u0Regime', ...
+        ['Lambda*(1+3*nu_bar)*u0 = %g is not small compared with k*sigma_y = %g: ' ...
+         'the shell will not behave as rigid-plastic. Reduce u0 or increase k.'], ...
+        K*params.u0_used, params.k*params.sigma_y);
 end
 end
 

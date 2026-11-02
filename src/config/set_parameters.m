@@ -28,7 +28,7 @@ end
 aliases = struct('alph', 'alpha', 'sig_y', 'sigma_y', ...
                  'far', 'F', 'xstar', 'c_b', 'xspin', 'c_sp', ...
                  'n_total', 'N_total', 'poisson', 'nu', 'nu_si', 'nu');
-derived = {'nu_bar', 'R_gT', 'A_int', 'Lambda_c', 'phase_separation', 'R', 'Vol', 'Apart', 'N_part', 'Q', 'size_probs'};
+derived = {'nu_bar', 'R_gT', 'A_int', 'Lambda_c', 'phase_separation', 'u0_used', 'R', 'Vol', 'Apart', 'N_part', 'Q', 'size_probs'};
 renamed = {'gamma', 'gamm'};
 fields  = fieldnames(params);
 

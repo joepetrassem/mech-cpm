@@ -6,7 +6,7 @@ MATLAB code accompanying *Coupled chemo-mechanical framework for phase-changing 
 
 The code simulates galvanostatic cycling of an ensemble of electrode particles with a distribution of sizes. Each particle is either single-phase or phase-separated into a core and a shell. Transitions are triggered when the particle's average concentration `c_avg` crosses a spinodal point (single phase -> core-shell) or a binodal point (core-shell -> single phase). Mechanics enters in two independent ways, following the scaling of the paper. The mechanical coupling `Lambda`, the ratio of the elastic misfit energy of a fully lithiated particle to the thermal energy, sets the internal incompatibility stress between core and shell: it shifts the spinodal and binodal points and tilts the mixed-phase branch of the potential. An external radial stress `sigma_ext`, which relaxes towards a plastic yield stress `sigma_y`, translates the potential rigidly. Stresses are measured in units of `R_g*T/V_c` (about 0.3 GPa), so the external stress enters the potential with unit coefficient.
 
-Symbols in the code follow the paper (see [Notation](#notation)); equation numbers in the source comments refer to the paper.
+Symbols in the code follow the paper (see [Notation](#notation)); the source comments name the paper sections they implement.
 
 ## Contents
 
@@ -16,6 +16,7 @@ Symbols in the code follow the paper (see [Notation](#notation)); equation numbe
 - [Binodal points: analytical vs grid search](#binodal-points-analytical-vs-grid-search)
 - [Notation](#notation)
 - [Model summary](#model-summary)
+- [Time integration](#time-integration)
 - [Using your own free energy](#using-your-own-free-energy)
 - [Repository layout](#repository-layout)
 - [Examples](#examples)
@@ -24,7 +25,7 @@ Symbols in the code follow the paper (see [Notation](#notation)); equation numbe
 
 ## Quick start
 
-Requirements: MATLAB R2019b or newer. The Optimization Toolbox (`fsolve`) is needed for the default analytical binodal solver; `ode15i` and `fzero` are in base MATLAB, and the grid-search binodal method needs no toolbox.
+Requirements: MATLAB R2019b or newer. The Optimization Toolbox (`fsolve`) is needed for the default analytical binodal solver; `ode15s`, `ode15i` and `fzero` are in base MATLAB, and the grid-search binodal method needs no toolbox.
 
 ```matlab
 cd path/to/MechoCPM          % the folder containing this README
@@ -50,18 +51,20 @@ results = runtests('tests');
 disp(table(results))
 ```
 
-All 39 tests should pass (`test_examples` runs examples 1-6 without figures on screen, so allow a minute or two). They check, among other things, that
+All 46 tests should pass (`test_examples` runs examples 1-6 without figures on screen, so allow a minute or two). They check, among other things, that
 
 - `mu_chem`, `mu_chem_prime` and `f_chem` are mutually consistent and equal the paper's `mu_chem`;
 - the spinodal points satisfy the coherent-spinodal condition `mu_chem'(c) + 2*A_int = 0`, exist only for `Lambda < Lambda_c = 1.8`, and the binodal points satisfy the common-tangent construction at `Lambda = 0`;
 - the analytical and grid-search binodal methods agree, and the binodal points do not depend on `c_avg`;
 - `mu_hys` equals the paper's `mu_single` and `mu_sep`, the core and shell potentials are equal at equilibrium, and the external stress shifts the potential by exactly `-sig_ext` for any `Lambda`;
 - old `gamma` inputs are rejected with the conversion to `Lambda`, and examples 1-6 run and produce figures and logs that never mention `gamma`;
-- a hysteretic external stress of `+-sigma_y` widens the simulated voltage gap by exactly `2*sigma_y*R_g*T/F`, and the quasi-static equilibrium potential is `-mu*R_g*T/F`;
+- the plastic-shell external stress starts at zero, opposes the surface motion (`-sigma_y` by the end of lithiation, `+sigma_y` by the end of delithiation), stays continuous across blocks, unloads elastically over `Delta c = 2*sigma_y/(Lambda*(1+3*nu_bar))` after a reversal, and is zero for `Lambda = 0`; the implicit stress law is solved exactly, and the DAE Jacobian supplied to `ode15i` matches finite differences;
+- the reduced ODE solved with `ode15s` (the default) satisfies every equation of the DAE, and gives the same electrode potential, events and stresses as `ode15i`;
+- once the stress has switched, it widens the simulated voltage gap by exactly `2*sigma_y*R_g*T/F`, and the quasi-static equilibrium potential is `-mu*R_g*T/F`;
 - the single-particle cycling paths (Fig. 3c,d) jump onto the mixed-phase line at the spinodal points and rejoin the single-phase branch continuously at the binodal points, single-phase states are classified correctly as stable, metastable or unstable, and the rich-shell and poor-shell mixed-phase branches coincide; the arrowheads on those plots lie on the paths, tangent to them on screen and pointing in the direction of travel;
 - above `Lambda_c` the particle is a solid solution: the quasi-static paths coincide on `mu_chem - sig_ext` for any `Lambda`, and a simulation runs with no phase-change events while still conserving charge;
 - the DAE initial conditions are consistent and a short cycle conserves charge;
-- **`test_regression_against_original_code`**: the electrode potential, binodal and spinodal points reproduce results saved from the original, pre-reorganisation code (`tests/data/original_code_reference.mat`) for four parameter sets, to within solver tolerance (RMS difference below 10 microvolts). The reference was made with the previous scaling and is converted with `Lambda = gamma*alpha`, `sigma_y = gamma*sigma_y_old`, which checks that the change of scaling leaves the model unchanged.
+- **`test_regression_against_original_code`**: the electrode potential, binodal and spinodal points reproduce results saved from the original, pre-reorganisation code (`tests/data/original_code_reference.mat`) for the two reference parameter sets without external stress, to within solver tolerance (RMS difference below 10 microvolts). The two references with external stress are not used, because the original code drove the stress by the global current and reset it at every block. The reference was made with the previous scaling and is converted with `Lambda = gamma*alpha`, `sigma_y = gamma*sigma_y_old`, which checks that the change of scaling leaves the model unchanged.
 
 **2. Examples.** Run them one at a time (each opens figures) or all at once:
 
@@ -77,11 +80,11 @@ What to expect from each example:
 |---|---|---|
 | `example_01_single_cycle` | seconds | 6 figures: electrode potential against SoC (a plateau with small steps) and against time, particle potentials, external stress switching between about -0.6 and +0.6, and the fraction of phase-separated particles rising and falling. Prints the potential on each branch at SoC = 0.25, 0.5, 0.75 and the gap |
 | `example_02_Lambda_sweep` | seconds | Electrode potential against SoC and time, and phase fractions, for `Lambda` = 0, 0.33, 0.66, 1.32; the plateau shrinks and tilts as `Lambda` grows. Prints the potential and gap for each run |
-| `example_03_sigma_y_sweep` | seconds | Electrode potential against SoC and time for `sigma_y` = 0, 0.2, 0.4, 0.8: larger `sigma_y` widens the gap between lithiation and delithiation (about 20 mV at `sigma_y` = 0 to about 60 mV at 0.8 near SoC = 0.5). Prints the simulated increase of the gap next to the prediction `2*sigma_y*R_g*T/F` (about 52 mV per unit); the two agree |
+| `example_03_sigma_y_sweep` | seconds | Electrode potential against SoC and time for `sigma_y` = 0, 0.1, 0.2, 0.4 with `Lambda = 1.32`: larger `sigma_y` widens the gap between lithiation and delithiation. Prints each switching window `2*sigma_y/(Lambda*(1+3*nu_bar))` (at most 0.24) and the simulated increase of the gap at SoC = 0.5 next to the prediction `2*sigma_y*R_g*T/F` (about 52 mV per unit); the two agree because every particle has switched by then |
 | `example_04_crate_and_particles` | seconds | Electrode potential against SoC and time, with printed summaries, for a C-rate sweep, a number-of-groups sweep and per-segment C-rates |
 | `example_05_ocv_hysteresis` | 1 s | Paper Fig. 3a,b: single-phase (dark blue) and mixed-phase (blue) solution branches for `Lambda = 0` (flat mixed-phase line) and `Lambda = 0.99` (sloped line). Fig. 3c,d: lithiation and delithiation paths for `Lambda = 0` and `Lambda = 0.99`, each with `sig_ext = -0.6` (red), 0 (black), 0.6 (blue): single phase up to the spinodal point (metastable beyond the binodal point), a vertical jump onto the mixed-phase line, phase separation to the far binodal point, the unstable single-phase states dotted, and arrowheads tangent to the paths showing the direction of charge. Also `Lambda = 2 > Lambda_c`, where there is no phase separation and both paths follow `mu_chem - sig_ext`. Prints `c_b = [0.0707 0.9293]`, `c_sp = [0.2113 0.7887]` and jumps in mu of -0.415 / +0.415 for `Lambda = 0`; `c_b = [0.1570 0.8430]`, `c_sp = [0.2857 0.7143]` and jumps of -0.134 / +0.134 for `Lambda = 0.99`; and the equilibrium potentials at c_avg = 0.5, which shift by about +-15.5 mV for `sig_ext = -+0.6` |
 | `example_06_critical_points_vs_Lambda` | seconds | Paper Fig. 2: spinodal and binodal points against `Lambda`, with `Lambda_c = 1.8` marked; prints the largest analytical vs grid-search difference (below 1e-3) |
-| `example_07_external_stress_comparison` | 1-2 min | Paper Figs. 4/6 (filling ratio of each particle group), Fig. 7 (electrode potential against SoC with and without external stress, `Lambda = 1.32`, `sigma_y = 0.8`) and the electrode potential against time. Prints both voltage summaries and the gap increase, about 41 mV (`2*0.8*R_g*T/F`) |
+| `example_07_external_stress_comparison` | several minutes | Paper Figs. 4/6 (filling ratio of each particle group), Fig. 7 (electrode potential against SoC with and without external stress, `Lambda = 1.32`, `sigma_y = 0.8`), the electrode potential against time and the external stress of each particle. With these values the stress takes `Delta c` of about 0.48 to switch after the reversal, so the full gap increase of about 41 mV (`2*0.8*R_g*T/F`) is only reached on the second half of delithiation; the script prints the gap increase at SoC = 0.25, 0.5 and 0.75 |
 
 **3. A quick check by hand.** With no mechanics the binodal points are the classical regular-solution values:
 
@@ -127,7 +130,7 @@ Names are case-insensitive, misspelt names raise an error listing the valid ones
 | `N_total` | 1e13 | Total number of particles N (only rescales capacity and current) |
 | `rest_time` | 100 s | Open-circuit rest before cycling |
 | `k` | 0.01 1/s | Relaxation rate of the external stress |
-| `u0` | 1e-5 A | Current scale in sigma_ideal |
+| `u0` | `[]` (auto) | Reference surface velocity in `sigma_ideal` [1/s]. Empty: `0.05*min(c_rate)/3600`, 5% of the nominal swelling rate (stored as `u0_used`). The shell acts as rigid-plastic when `u0` is much smaller than the swelling rate and `Lambda*(1+3*nu_bar)*u0` much smaller than `k*sigma_y`; `run_simulation` warns if not. Much smaller values make the switch very sharp, which slows the integration (and can stop `ode15i`) |
 | `I0` | 1 A/m^2 | Exchange current density |
 | `c_m` | 2.7e5 mol/m^3 | Maximum concentration |
 | `F`, `R_g`, `T` | 96500, 8.314, 300 | Faraday constant, gas constant, temperature |
@@ -135,7 +138,9 @@ Names are case-insensitive, misspelt names raise an error listing the valid ones
 | `binodal_method` | `'analytical'` | `'analytical'`, `'gridsearch'` or `'both'` (see below) |
 | `binodal_grid_points`, `binodal_tol` | 2000, 1e-3 | Grid resolution and agreement tolerance for the grid search |
 | `binodal_initial_guess`, `binodal_c_avg` | `[0.1 0.9]`, 0.51 | `fsolve` starting point and c_avg used in the minimisation |
-| `RelTol`, `AbsTol` | 1e-6, 1e-8 | `ode15i` tolerances |
+| `solver` | `'ode15s'` | `'ode15s'`: reduced ODE in `(c_avg, sig_ext)` (default); `'ode15i'`: fully implicit DAE. See [Time integration](#time-integration) |
+| `RelTol`, `AbsTol` | 1e-6, 1e-8 | Integration tolerances |
+| `max_step` | `[]` (auto) | Largest `ode15s` step [s]; empty means 1/1000 of each block, so the output resolves the voltage curve |
 | `tau_I_default`, `tau_I_reversal` | 2 s, 10 s | Time constants of the current ramp between blocks |
 | `verbose` | `true` | Print progress |
 
@@ -201,7 +206,8 @@ The spinodal points `c_sp = [c_s1, c_s2]` come from the coherent-spinodal condit
 | Phi | `Phi` | Electrode potential |
 | j_tr | `jtr` | Interfacial transfer current density |
 | N^(i), A^(i), V^(i) | `N_part`, `Apart`, `Vol` | Particles, surface area and volume per group |
-| k, u0, I0, c_m | `k`, `u0`, `I0`, `c_m` | As in the ensemble parameter table |
+| k, u0, I0, c_m | `k`, `u0`, `I0`, `c_m` | Stress relaxation rate, reference surface velocity, exchange current density, maximum concentration |
+| u_dot | `surface_velocity` | Surface velocity of a particle |
 
 The phase state `s` of a particle is `0` (single phase), `+1` (lithium-rich shell, core `c_b1`, shell `c_b2`) or `-1` (lithium-poor shell, core `c_b2`, shell `c_b1`).
 
@@ -214,8 +220,9 @@ dc_avg^(i)/dt  = -j_tr^(i) A^(i) / (F V^(i))
 eta^(i)        = (F Phi + mu^(i)) / (R_g T)
 j_tr^(i)       = 2 I0 sqrt(c_surf (c_m - c_surf)) / c_m * sinh(eta/2)
 I(t)           = sum_i N^(i) A^(i) j_tr^(i)
-d sig_ext/dt   = -k (sig_ext - sig_ideal),
-sig_ideal      = sigma_y tanh(I/u0)
+d sig_ext^(i)/dt = -k (sig_ext^(i) - sig_ideal^(i))
+sig_ideal^(i)    = -sigma_y tanh(u_dot^(i)/u0)
+u_dot^(i)        = (d sig_ext^(i)/dt) / (Lambda (1+3 nu_bar)) + (dc_avg^(i)/dt) / c_m
 ```
 
 `mu^(i)` is the surface chemo-mechanical potential from the single-particle model (`mu_hys`): in units of `R_g*T`,
@@ -225,7 +232,23 @@ mu_single = mu_chem(c_avg) - sig_ext
 mu_sep    = mu_chem(c_s) - 2 A_int (c_avg - c_s) - sig_ext,   A_int = Lambda (1+3 nu_bar) / (3 (1+nu_bar))
 ```
 
-for a single-phase and a core-shell particle (shell concentration `c_s`). `Lambda` tilts the mixed-phase branch; the external stress translates both branches by `-sig_ext`, so a hysteretic stress of `+-sigma_y` widens the voltage gap by `2*sigma_y*R_g*T/F`. The system is a fully implicit DAE solved with `ode15i`. Phase changes are located with event functions; after each event, consistent initial conditions are recomputed and integration resumes. At the start of each current block the external stress is reset to `sign(I)*sigma_y` (the shell is assumed to have yielded in the direction of the new current), and the current is ramped smoothly between blocks (`ramp_current`).
+for a single-phase and a core-shell particle (shell concentration `c_s`). `Lambda` tilts the mixed-phase branch; the external stress translates both branches by `-sig_ext`, so a hysteretic stress of `+-sigma_y` widens the voltage gap by `2*sigma_y*R_g*T/F`. The current is ramped smoothly between blocks (`ramp_current`).
+
+The external stress models a thin, rapidly yielding plastic shell around each particle (`sig_ideal`, `surface_velocity`). It responds to the velocity `u_dot` of that particle's own surface: while `|sig_ext| < sigma_y` the shell holds the surface still and the stress builds at a rate set by the particle stiffness; once it reaches the yield value the shell flows and the stress stays at `-sigma_y` (expanding) or `+sigma_y` (contracting). The law is implicit in `d sig_ext/dt`; `solve_stress_rate` solves it for the stress rate (see [Time integration](#time-integration)). In an ensemble, a particle that pauses or gives back lithium while others react unloads partly and then reloads, so during lithiation the stresses are not all exactly `-sigma_y`. Each particle starts unstressed and the stress is continuous across current blocks, so after a reversal it unloads elastically over `Delta c = 2*sigma_y/(Lambda*(1+3*nu_bar))` of filling fraction. For `Lambda = 0` the particle never loads the shell and `sig_ext = 0`. To model a different surrounding medium, change `sig_ideal` (both its value and its derivative) and, if needed, the relaxation law in `solve_stress_rate`, `dae_residual` and `dae_jacobian`.
+
+## Time integration
+
+The ensemble model is an index-one DAE: `Phi` and the reaction currents `j_tr` are algebraic variables fixed by current conservation and Butler-Volmer kinetics, and the external-stress law is implicit in `d sig_ext/dt`. Each of these implicit parts has a unique solution for any state:
+
+- the total current increases strictly with `Phi`, so `Phi` follows from a bracketed root solve (`solve_potential`);
+- `j_tr` then follows from Butler-Volmer;
+- the stress-law residual increases strictly with `d sig_ext/dt`, so the stress rate follows from bisection (`solve_stress_rate`).
+
+By default (`solver = 'ode15s'`), the code therefore integrates only `y = [c_avg; sig_ext]` with `ode15s`, and the right-hand side (`reduced_rhs`) solves for `Phi`, `j_tr` and `d sig_ext/dt` at every evaluation. This is the same model, not an approximation: a test checks that the reduced right-hand side satisfies every equation of the DAE. It is more robust than the fully implicit form, because the steep switch of the plastic-shell stress is handled by bisection rather than by the integrator's Newton iteration. Phase changes are located with event functions; after each event the phase state is updated and integration resumes from the same state, with no consistent initial conditions needed. `Phi` and `j_tr` are rebuilt at the output times, so the solution has the same fields as before.
+
+The fully implicit DAE in `(c_avg, j_tr, sig_ext, Phi)` is still available with `solver = 'ode15i'` (`solve_block`, `dae_residual`, `dae_jacobian`, `consistent_initial_conditions`). It can stop at current reversals with the surface-velocity stress model when many particles are present.
+
+See [`docs/solver_formulation.md`](docs/solver_formulation.md) for the full description, the numerical settings and a suggested wording for the manuscript.
 
 ## Using your own free energy
 
@@ -238,18 +261,20 @@ MechoCPM/
 |-- setup_paths.m                   adds src/ to the MATLAB path
 |-- src/
 |   |-- config/                     default_parameters, set_parameters, finalise_parameters
-|   |-- solver/                     run_simulation, solve_block, dae_residual,
-|   |                               phase_change_events, consistent_initial_conditions,
-|   |                               ramp_current, build_particle_population, build_current_protocol
+|   |-- solver/                     run_simulation, solve_block_ode15s, reduced_rhs, solve_potential,
+|   |                               phase_change_events, update_phase_state, ramp_current,
+|   |                               build_particle_population, build_current_protocol,
+|   |                               solve_block, dae_residual, dae_jacobian, consistent_initial_conditions (ode15i)
 |   |-- thermodynamics/             chemical_free_energy (+ f_chem, mu_chem, mu_chem_prime),
 |   |                               mu_hys, find_binodal_points, find_spinodal_points,
 |   |                               compute_critical_points
 |   |-- kinetics/                   exchange_current
-|   |-- mechanics/                  sig_ideal
+|   |-- mechanics/                  sig_ideal, surface_velocity, solve_stress_rate
 |   |-- analysis/                   run_parameter_sweep, compute_ocv_hysteresis, voltage_summary
 |   `-- plotting/                   plot_voltage_soc, plot_voltage_time, plot_potential, plot_external_stress,
 |                                   plot_phase_fraction, plot_filling_ratio, plot_ocv_hysteresis, plot_gibbs_minimisers,
 |                                   plot_results_comparison, new_figure, make_fixed_figure
+|-- docs/solver_formulation.md      how the model is integrated in time
 |-- examples/                       example_01 ... example_07, run_all_examples
 |-- tests/                          test_thermodynamics, test_solver, test_examples, test_plotting, data/original_code_reference.mat
 `-- .github/workflows/tests.yml     runs the tests on every push

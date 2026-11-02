@@ -44,7 +44,10 @@ params.nu  = 0.25;             % Poisson ratio (nu_bar = nu/(1-2*nu) is derived)
 params.Lambda  = 0;            % mechanical coupling Lambda (0 = no internal stress)
 params.sigma_y = 0;            % scaled yield stress of the external shell, V_c*sigma_y/(R_g*T)
 params.alpha   = 0.33;         % swelling magnitude alpha = V_c*c_m/3 (displacement scale only)
-params.u0      = 1e-5;         % current scale setting the steepness of sig_ideal [A]
+params.u0      = [];           % reference surface velocity in sig_ideal [1/s]. Empty (default):
+                               % 0.05*min(c_rate)/3600, i.e. 5% of the nominal swelling rate,
+                               % which keeps the shell rigid-plastic (u0 << swelling rate) and the
+                               % switch smooth enough for ode15i at every C-rate. Derived: u0_used
 params.k       = 0.01;         % relaxation rate of sig_ext towards sig_ideal [1/s]
 
 %% Reaction kinetics
@@ -75,7 +78,13 @@ params.binodal_initial_guess = [0.1, 0.9];   % fsolve starting point [c_c, c_s]
 params.binodal_c_avg         = 0.51;         % c_avg used in the minimisation
 
 %% Solver settings
+params.solver               = 'ode15s';   % 'ode15s': reduced ODE in (c_avg, sig_ext), Phi, jtr and
+                                          %   dsig/dt solved at each evaluation (default, robust);
+                                          % 'ode15i': fully implicit DAE in (c_avg, jtr, sig_ext, Phi)
+                                          % See docs/solver_formulation.md.
 params.RelTol               = 1e-6;
+params.max_step             = [];    % ode15s maximum step [s]; empty: 1/1000 of each block, so
+                                     % that output points resolve the voltage curve (SoC ~0.001)
 params.AbsTol               = 1e-8;
 params.tau_I_default        = 2;     % current-ramp time constant [s]
 params.tau_I_reversal       = 10;    % ramp time constant when the current changes sign [s]
