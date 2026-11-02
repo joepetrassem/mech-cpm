@@ -65,7 +65,7 @@ if n_sig > 1, legend(ax, 'Location', 'best'); end
 
 %% Arrowheads: on the single-phase section before the jump, and on the
 %  phase-separated section travelled by that branch only
-delete(findobj(ax, 'Tag', 'lith_arrow', '-or', 'Tag', 'delith_arrow'));
+delete(findall(ax, 'Tag', 'lith_arrow', '-or', 'Tag', 'delith_arrow'));   % findall: arrows are hidden from the legend
 drawnow;
 L = ocv.lith;  D = ocv.delith;  c_sp = ocv.c_sp;
 lith_sections   = {1:find(L.s ~= 0, 1) - 1, find(L.s ~= 0 & L.c >= c_sp(2))};

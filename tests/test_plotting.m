@@ -35,7 +35,7 @@ end
 
 % -------------------------------------------------------------------------
 function check_arrows(testCase, ax, tag, path, scale, n_expected)
-arrows = findobj(ax, 'Tag', tag);
+arrows = findall(ax, 'Tag', tag);           % findall: HandleVisibility is 'off'
 verifyNumElements(testCase, arrows, n_expected);
 pos = getpixelposition(ax);
 sx = pos(3)/diff(xlim(ax));  sy = pos(4)/diff(ylim(ax));
