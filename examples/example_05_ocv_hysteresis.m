@@ -16,15 +16,15 @@ for Lambda = [0, 0.99]
     plot_gibbs_minimisers(ocv);
 end
 
-%% Fig. 3c: cycling without mechanics (Lambda = 0, sig_ext = 0)
-ocv_c = compute_ocv_hysteresis(set_parameters(default_parameters(), 'Lambda', 0), 0);
+%% Fig. 3c: cycling without mechanics (Lambda = 0, sig_ext = = -0.6 (compressive), 0, 0.6 (tensile))
+ocv_c = compute_ocv_hysteresis(set_parameters(default_parameters(), 'Lambda', 0), [-0.6, 0, 0.6]);
 plot_ocv_hysteresis(ocv_c);
-plot_ocv_voltage(ocv_c);
+
 
 %% Fig. 3d: cycling with mechanics (Lambda = 0.99), sig_ext = -0.6 (compressive), 0, 0.6 (tensile)
 ocv_d = compute_ocv_hysteresis(set_parameters(default_parameters(), 'Lambda', 0.99), [-0.6, 0, 0.6]);
 plot_ocv_hysteresis(ocv_d);
-plot_ocv_voltage(ocv_d);
+
 
 %% Log
 for o = {ocv_c, ocv_d}
