@@ -20,8 +20,9 @@ function params = default_parameters()
 %       c_b     binodal points [c_b1, c_b2]
 %       c_sp    spinodal points [c_s1, c_s2]
 %   Derived: A_int = Lambda*(1+3*nu_bar)/(3*(1+nu_bar)) (incompatibility
-%   penalty) and Lambda_c = 3*(1+nu_bar)/(1+3*nu_bar), the coupling above
-%   which phase separation is suppressed for the default mu_chem.
+%   penalty) and Lambda_c = -min(mu_chem')*3*(1+nu_bar)/(2*(1+3*nu_bar)), the
+%   coupling above which phase separation is suppressed (1.8 for the paper's
+%   mu_chem and nu = 0.25).
 %
 %   The previous scaling used gamma = 2*G*V_c/(R_g*T), with Lambda = gamma*alpha
 %   and stresses scaled by 2*G. Old 'gamma' values raise an error with
@@ -74,8 +75,10 @@ params.c_sp = [0.2113, 0.7887];            % (values for mu_chem of the paper, L
 params.binodal_method        = 'analytical'; % 'analytical' (fsolve), 'gridsearch' or 'both'
 params.binodal_grid_points   = 2000;         % grid points per axis ('gridsearch' / 'both')
 params.binodal_tol           = 1e-3;         % max analytical-grid difference ('both')
-params.binodal_initial_guess = [0.1, 0.9];   % fsolve starting point [c_c, c_s]
-params.binodal_c_avg         = 0.51;         % c_avg used in the minimisation
+params.binodal_initial_guess = [];   % fsolve starting point [c_c, c_s]; empty: from the
+                                     % spinodal points (see FIND_BINODAL_POINTS)
+params.binodal_c_avg         = [];   % c_avg used in the minimisation; empty: mean(c_sp),
+                                     % which always lies between the binodal points
 
 %% Solver settings
 params.solver               = 'ode15s';   % 'ode15s': reduced ODE in (c_avg, sig_ext), Phi, jtr and

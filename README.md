@@ -17,7 +17,7 @@ Symbols in the code follow the paper (see [Notation](#notation)); the source com
 - [Notation](#notation)
 - [Model summary](#model-summary)
 - [Time integration](#time-integration)
-- [Using your own free energy](#using-your-own-free-energy)
+- [Using your own chemical potential](#using-your-own-chemical-potential)
 - [Repository layout](#repository-layout)
 - [Examples](#examples)
 - [Output](#output)
@@ -51,10 +51,10 @@ results = runtests('tests');
 disp(table(results))
 ```
 
-All 46 tests should pass (`test_examples` runs examples 1-6 without figures on screen, so allow a minute or two). They check, among other things, that
+All 48 tests should pass (`test_examples` runs examples 1-6 without figures on screen, so allow a minute or two). They check, among other things, that
 
 - `mu_chem`, `mu_chem_prime` and `f_chem` are mutually consistent and equal the paper's `mu_chem`;
-- the spinodal points satisfy the coherent-spinodal condition `mu_chem'(c) + 2*A_int = 0`, exist only for `Lambda < Lambda_c = 1.8`, and the binodal points satisfy the common-tangent construction at `Lambda = 0`;
+- the spinodal points satisfy the coherent-spinodal condition `mu_chem'(c) + 2*A_int = 0`, exist only for `Lambda < Lambda_c` (1.8 for the paper's `mu_chem`), match the closed form of the regular solution, and start-up inside the spinodal range is rejected; and the binodal points satisfy the common-tangent construction at `Lambda = 0`;
 - the analytical and grid-search binodal methods agree, and the binodal points do not depend on `c_avg`;
 - `mu_hys` equals the paper's `mu_single` and `mu_sep`, the core and shell potentials are equal at equilibrium, and the external stress shifts the potential by exactly `-sig_ext` for any `Lambda`;
 - old `gamma` inputs are rejected with the conversion to `Lambda`, and examples 1-6 run and produce figures and logs that never mention `gamma`;
@@ -137,7 +137,7 @@ Names are case-insensitive, misspelt names raise an error listing the valid ones
 | `compute_critical_points` | `true` | If `false`, `c_b` and `c_sp` are used as given |
 | `binodal_method` | `'analytical'` | `'analytical'`, `'gridsearch'` or `'both'` (see below) |
 | `binodal_grid_points`, `binodal_tol` | 2000, 1e-3 | Grid resolution and agreement tolerance for the grid search |
-| `binodal_initial_guess`, `binodal_c_avg` | `[0.1 0.9]`, 0.51 | `fsolve` starting point and c_avg used in the minimisation |
+| `binodal_initial_guess`, `binodal_c_avg` | `[]`, `[]` (auto) | `fsolve` starting point and `c_avg` used in the minimisation; empty means a guess built from the spinodal points and `c_avg = mean(c_sp)` |
 | `solver` | `'ode15s'` | `'ode15s'`: reduced ODE in `(c_avg, sig_ext)` (default); `'ode15i'`: fully implicit DAE. See [Time integration](#time-integration) |
 | `RelTol`, `AbsTol` | 1e-6, 1e-8 | Integration tolerances |
 | `max_step` | `[]` (auto) | Largest `ode15s` step [s]; empty means 1/1000 of each block, so the output resolves the voltage curve |
@@ -185,7 +185,7 @@ c_b = find_binodal_points(p, 'Method', 'gridsearch');
 sol = run_simulation('Lambda', 0.99, 'binodal_method', 'both'); % choose it for a simulation
 ```
 
-The spinodal points `c_sp = [c_s1, c_s2]` come from the coherent-spinodal condition `mu_chem'(c) + 2*A_int = 0` in `find_spinodal_points`. For `Lambda >= Lambda_c` (1.8 for the default `mu_chem` and `nu = 0.25`) no spinodal points exist: phase separation is suppressed. The critical points are then returned as `NaN`, `params.phase_separation` is `false`, and every particle lithiates as a solid solution with `mu = mu_chem(c_avg) - sig_ext`. Lithiation and delithiation coincide (apart from any hysteretic external stress), the result no longer depends on `Lambda`, and the decreasing part of `mu_chem` is stable. `run_simulation` runs without phase-change events. The external stress does not affect either set of critical points.
+The spinodal points `c_sp = [c_s1, c_s2]` come from the coherent-spinodal condition `mu_chem'(c) + 2*A_int = 0` in `find_spinodal_points`. For `Lambda >= Lambda_c` (computed from `mu_chem`; 1.8 for the paper's `mu_chem` and `nu = 0.25`) no spinodal points exist: phase separation is suppressed. The critical points are then returned as `NaN`, `params.phase_separation` is `false`, and every particle lithiates as a solid solution with `mu = mu_chem(c_avg) - sig_ext`. Lithiation and delithiation coincide (apart from any hysteretic external stress), the result no longer depends on `Lambda`, and the decreasing part of `mu_chem` is stable. `run_simulation` runs without phase-change events. The external stress does not affect either set of critical points.
 
 ## Notation
 
@@ -250,9 +250,65 @@ The fully implicit DAE in `(c_avg, j_tr, sig_ext, Phi)` is still available with 
 
 See [`docs/solver_formulation.md`](docs/solver_formulation.md) for the full description, the numerical settings and a suggested wording for the manuscript.
 
-## Using your own free energy
+## Using your own chemical potential
 
-The chemical free energy is defined in a single file, `src/thermodynamics/chemical_free_energy.m`, which returns `g_chem`, `mu_chem = g_chem'` and `mu_chem'`. `f_chem`, `mu_chem` and `mu_chem_prime` are thin wrappers around it, so the three can never become inconsistent. The shipped version is the regular solution used in the paper, `mu_chem = log(c/(1-c)) + 3(1-2c)`. Replace it with your own expression and run `runtests('tests')`: the tests check that the derivatives are consistent and that the critical points satisfy the common-tangent and stability conditions (the regression test against the original results will, of course, no longer apply).
+The homogeneous chemical potential `mu_chem(c)` sets the material: its shape decides whether, and between which concentrations, a particle phase-separates. Everything else (critical points, the critical coupling `Lambda_c`, the single-particle curves and the ensemble) follows from it automatically.
+
+### Where to change it
+
+`mu_chem` is defined in one file, `src/thermodynamics/chemical_free_energy.m`, together with its integral and derivative:
+
+```matlab
+function [f, mu, dmu] = chemical_free_energy(c)
+% c: normalised concentration in (0, 1); all outputs in units of R_g*T
+f   = ...;      % g_chem(c), the homogeneous free energy
+mu  = ...;      % mu_chem(c)  = d g_chem / dc
+dmu = ...;      % mu_chem'(c) = d mu_chem / dc
+end
+```
+
+`f_chem`, `mu_chem` and `mu_chem_prime` are thin wrappers around this file, so the rest of the code always sees the same function. The shipped version is the regular solution of the paper, `mu_chem = log(c/(1-c)) + 3(1-2c)`. To try another regular solution, change `Omega`; for a different form, replace the three expressions.
+
+### Requirements
+
+- **Consistency.** `mu` must be the derivative of `f`, and `dmu` the derivative of `mu`. `f` is used in the Gibbs minimisation, `mu` in the potentials and `dmu` in the stability analysis, so an inconsistent set gives wrong binodal or spinodal points. `test_mu_is_derivative_of_f` and `test_mu_prime_is_derivative_of_mu` check this by finite differences.
+- **Vectorised and finite on (0, 1).** All three are evaluated element-wise on vectors of concentrations strictly between 0 and 1.
+- **One miscibility gap.** Phase separation needs `mu_chem` to be non-monotonic. The model has three phase states (single phase, lithium-rich shell, lithium-poor shell), so it supports one two-phase region: `mu_chem'(c) + 2*A_int` must change sign once on each side of the global minimum of `mu_chem'`. Materials with several plateaus (e.g. graphite) need more phase states and are not covered.
+- **No symmetry is assumed.** `mu_chem` need not be symmetric about `c = 1/2`.
+
+### What follows automatically
+
+- **Critical coupling.** Phase separation is possible only while `2*A_int < -min mu_chem'`, so `params.Lambda_c = -min(mu_chem')*3*(1+nu_bar)/(2*(1+3*nu_bar))` is computed from your `mu_chem` (`min_mu_chem_prime`). It is 1.8 for the paper's `mu_chem` and `nu = 0.25`, and 0 if `mu_chem` is monotonic. Above `Lambda_c` particles stay single phase as a solid solution (see [Binodal points](#binodal-points-analytical-vs-grid-search)).
+- **Spinodal points** `c_sp`: the roots of `mu_chem'(c) + 2*A_int = 0` on either side of the global minimum of `mu_chem'`.
+- **Binodal points** `c_b`: from the Gibbs-energy minimisation, evaluated at `c_avg = mean(c_sp)`, which always lies between the binodal points, and started from a guess built from `c_sp`. Override with `binodal_c_avg` and `binodal_initial_guess` if needed.
+
+### Checking a new `mu_chem`
+
+```matlab
+setup_paths();
+p = compute_critical_points(default_parameters());       % Lambda = 0
+[p.Lambda_c, p.c_sp, p.c_b]
+[c_b, info] = find_binodal_points(p, 'Method', 'both', 'Verbose', true);   % analytical vs grid search
+run('examples/example_06_critical_points_vs_Lambda.m')   % critical points against Lambda
+run('examples/example_05_ocv_hysteresis.m')              % single-particle curves
+```
+
+With `'Method', 'both'` the analytical binodal points are compared with a brute-force grid search; a warning means they disagree. Example 6 sweeps `Lambda` up to 1.6, so set its range below your `Lambda_c`.
+
+Choose `soc_waypoints(1)` outside the spinodal range: `run_simulation` stops with `MechoCPM:unstableStart` if the cycle starts single phase between `c_s1` and `c_s2`, because the phase-switching rule is not defined there. Starting in the metastable range between a binodal and a spinodal point is fine.
+
+### Tests that are specific to the paper's `mu_chem`
+
+Most tests check relations that hold for any `mu_chem`. The following use the paper's `mu_chem` or its numbers, and are expected to fail after a change; adapt or skip them:
+
+| Test | Uses |
+|---|---|
+| `test_free_energy_matches_paper`, `test_binodal_matches_closed_form` | The closed form of the regular solution with `Omega = 3` |
+| `test_critical_coupling_Lambda_c`, `test_derived_mechanical_parameters` | `Lambda_c = 1.8`, symmetry about 1/2 |
+| `test_regression_against_original_code` | Results saved from the original code |
+| `test_ocv_without_phase_separation`, `test_cycle_without_phase_separation`, the `Lambda = 2` cases in `test_plotting` | `Lambda = 2, 3` being above `Lambda_c` |
+| `test_unstable_initial_state_errors` | The spinodal points at `Lambda = 0.99` |
+| `test_examples` | Example parameter values (`Lambda` up to 2) |
 
 ## Repository layout
 
@@ -266,7 +322,7 @@ MechoCPM/
 |   |                               build_particle_population, build_current_protocol,
 |   |                               solve_block, dae_residual, dae_jacobian, consistent_initial_conditions (ode15i)
 |   |-- thermodynamics/             chemical_free_energy (+ f_chem, mu_chem, mu_chem_prime),
-|   |                               mu_hys, find_binodal_points, find_spinodal_points,
+|   |                               mu_hys, find_binodal_points, find_spinodal_points, min_mu_chem_prime,
 |   |                               compute_critical_points
 |   |-- kinetics/                   exchange_current
 |   |-- mechanics/                  sig_ideal, surface_velocity, solve_stress_rate

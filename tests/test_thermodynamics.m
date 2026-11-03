@@ -240,3 +240,24 @@ for Lambda = [2, 3]          % (exactly at Lambda_c the outcome depends on round
     verifyEqual(testCase, ocv.mu_lith, ref, 'AbsTol', 1e-14);     % independent of Lambda
 end
 end
+
+function test_binodal_matches_closed_form(testCase)
+% For the paper's regular solution (Omega = 3), minimising the Gibbs energy
+% with the incompatibility penalty is the common-tangent construction on
+% g_chem(c) + A_int*c^2, i.e. a regular solution with Omega_eff = 3 - A_int:
+%     log(c/(1-c)) = (3 - A_int)*(2c - 1),   c_b2 = 1 - c_b1.
+% Checked up to just below Lambda_c = 1.8, where the binodal points close in.
+for Lambda = [0, 0.5, 0.99, 1.32, 1.6, 1.75, 1.79]
+    p = compute_critical_points(set_parameters(default_parameters(), 'Lambda', Lambda, ...
+        'verbose', false));
+    Om = 3 - p.A_int;
+    c1 = fzero(@(c) log(c./(1 - c)) - Om*(2*c - 1), [1e-12, p.c_sp(1)]);
+    verifyEqual(testCase, p.c_b, [c1, 1 - c1], 'AbsTol', 1e-8, ...
+        sprintf('analytical binodal points, Lambda = %g', Lambda));
+    verifyEqual(testCase, p.c_sp, 0.5 + [-1, 1]*sqrt(0.25 - 1/(2*Om)), 'AbsTol', 1e-10);
+    g = find_binodal_points(p, 'Method', 'gridsearch', 'GridPoints', 2000);
+    verifyEqual(testCase, g, [c1, 1 - c1], 'AbsTol', 1e-3, ...
+        sprintf('grid-search binodal points, Lambda = %g', Lambda));
+end
+end
+

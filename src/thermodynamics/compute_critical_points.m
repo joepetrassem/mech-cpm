@@ -1,10 +1,12 @@
 function params = compute_critical_points(params)
 %COMPUTE_CRITICAL_POINTS Fill params.c_b (binodal) and params.c_sp (spinodal).
 %
-%   If params.compute_critical_points is true (default), the binodal points
-%   c_b = [c_b1, c_b2] come from FIND_BINODAL_POINTS (method chosen by
-%   params.binodal_method: 'analytical', 'gridsearch' or 'both') and the
-%   spinodal points c_sp = [c_s1, c_s2] from FIND_SPINODAL_POINTS. Otherwise
+%   If params.compute_critical_points is true (default), the spinodal
+%   points c_sp = [c_s1, c_s2] come from FIND_SPINODAL_POINTS and the binodal
+%   points c_b = [c_b1, c_b2] from FIND_BINODAL_POINTS (method chosen by
+%   params.binodal_method: 'analytical', 'gridsearch' or 'both'), evaluated
+%   at c_avg = mean(c_sp) and started from a guess based on c_sp unless
+%   params.binodal_c_avg / params.binodal_initial_guess are set. Otherwise
 %   the values already in params are used unchanged.
 %
 %   If there are no spinodal points (Lambda >= Lambda_c for the default
@@ -30,12 +32,14 @@ if params.compute_critical_points
         return
     end
 
+    c_avg = params.binodal_c_avg;
+    if isempty(c_avg), c_avg = mean(c_sp); end
     c_b = find_binodal_points(params, ...
         'Method',       params.binodal_method, ...
         'GridPoints',   params.binodal_grid_points, ...
         'Tolerance',    params.binodal_tol, ...
         'InitialGuess', params.binodal_initial_guess, ...
-        'c_avg',        params.binodal_c_avg);
+        'c_avg',        c_avg);
     if diff(sort(c_b)) < 1e-5
         error('MechoCPM:binodalPoints', ...
             'Binodal points are (nearly) coincident: [%g %g].', c_b);
@@ -51,6 +55,6 @@ if params.phase_separation && ...
         ~(params.c_b(1) < params.c_sp(1) && params.c_sp(2) < params.c_b(2))
     warning('MechoCPM:criticalOrder', ...
         'Expected c_b1 < c_s1 < c_s2 < c_b2; got c_b = [%.4f %.4f], c_sp = [%.4f %.4f].', ...
-        params.c_b, params.c_sp);
+        params.c_b(1), params.c_b(2), params.c_sp(1), params.c_sp(2));
 end
 end

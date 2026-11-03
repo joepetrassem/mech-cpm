@@ -18,12 +18,18 @@ function [c_b, info] = find_binodal_points(params, varargin)
 %     'GridPoints'    Grid points per concentration axis (default 2000).
 %     'Tolerance'     Maximum allowed difference between the two methods
 %                     (default 1e-3). Only used with 'both'.
-%     'InitialGuess'  Starting point for FSOLVE (default [0.1 0.9]).
+%     'InitialGuess'  Starting point for FSOLVE. Default (empty): from the
+%                     spinodal points c_s1, c_s2, with m = (c_s1 + c_s2)/2
+%                     and h = (c_s2 - c_s1)/2,
+%                       [max(m - sqrt(3)*h, c_s1/2), min(m + sqrt(3)*h, (1 + c_s2)/2)],
+%                     which is close to the binodal points both far from and
+%                     near the critical coupling.
 %     'c_avg'         Average particle concentration used to evaluate the
-%                     core volume fraction (default 0.51). In the
-%                     sharp-interface, linear-elastic model the binodal
-%                     points do not depend on it, provided it lies between
-%                     them.
+%                     core volume fraction. Default (empty): (c_s1 + c_s2)/2,
+%                     which always lies between the binodal points because
+%                     c_b1 < c_s1 < c_s2 < c_b2. In the sharp-interface,
+%                     linear-elastic model the binodal points do not depend
+%                     on c_avg, provided it lies between them.
 %     'Verbose'       Print a summary and timing (default false).
 %
 %   [c_b, info] = find_binodal_points(...) also returns a structure with fields
@@ -58,12 +64,29 @@ addRequired(p, 'params', @isstruct);
 addParameter(p, 'Method', 'analytical', @(x) ischar(x) || isstring(x));
 addParameter(p, 'GridPoints', 2000, @(x) isnumeric(x) && isscalar(x) && x >= 10 && x == round(x));
 addParameter(p, 'Tolerance', 1e-3, @(x) isnumeric(x) && isscalar(x) && x > 0);
-addParameter(p, 'InitialGuess', [0.1 0.9], @(x) isnumeric(x) && numel(x) == 2);
-addParameter(p, 'c_avg', 0.51, @(x) isnumeric(x) && isscalar(x) && x > 0 && x < 1);
+addParameter(p, 'InitialGuess', [], @(x) isempty(x) || (isnumeric(x) && numel(x) == 2));
+addParameter(p, 'c_avg', [], @(x) isempty(x) || (isnumeric(x) && isscalar(x) && x > 0 && x < 1));
 addParameter(p, 'Verbose', false, @(x) islogical(x) || isnumeric(x));
 parse(p, params, varargin{:});
 opt = p.Results;
 method = validatestring(opt.Method, {'analytical', 'gridsearch', 'both'}, mfilename, 'Method');
+
+% ------------------------------------- defaults from the spinodal points --
+if isempty(opt.c_avg) || isempty(opt.InitialGuess)
+    state = warning('off', 'find_spinodal_points:stable');
+    c_sp  = find_spinodal_points(params);
+    warning(state);
+    if any(isnan(c_sp))
+        error('find_binodal_points:noPhaseSeparation', ...
+            ['No spinodal points (Lambda = %g >= Lambda_c = %.4g): there is no ' ...
+             'phase-separated state, so no binodal points.'], params.Lambda, params.Lambda_c);
+    end
+    m = mean(c_sp);  h = diff(c_sp)/2;
+    if isempty(opt.c_avg), opt.c_avg = m; end
+    if isempty(opt.InitialGuess)
+        opt.InitialGuess = [max(m - sqrt(3)*h, c_sp(1)/2), min(m + sqrt(3)*h, (1 + c_sp(2))/2)];
+    end
+end
 
 % ------------------------------------------------- model coefficients --
 mech.A_int = params.A_int;          % Lambda*(1 + 3*nu_bar)/(3*(1 + nu_bar))
@@ -93,7 +116,7 @@ switch method
             warning('find_binodal_points:methodsDisagree', ...
                 ['Analytical [%.4f %.4f] and grid-search [%.4f %.4f] binodal points ', ...
                  'differ by more than %.1e; returning the grid-search result.'], ...
-                c_ana, c_grid, opt.Tolerance);
+                c_ana(1), c_ana(2), c_grid(1), c_grid(2), opt.Tolerance);
             c_b = c_grid;
         else
             c_b = c_ana;

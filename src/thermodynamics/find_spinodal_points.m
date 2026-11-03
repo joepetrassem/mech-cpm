@@ -8,8 +8,10 @@ function c_sp = find_spinodal_points(params)
 %       mu_chem'(c) + 2*A_int = 0,   A_int = Lambda*(1 + 3*nu_bar)/(3*(1 + nu_bar)),
 %
 %   between which a single-phase particle is unstable. The roots are found
-%   by bracketing either side of the minimum of mu_chem'(c), so the result
-%   does not depend on an initial guess.
+%   by bracketing either side of the global minimum of mu_chem'(c)
+%   (MIN_MU_CHEM_PRIME), so the result does not depend on an initial guess.
+%   This assumes mu_chem'(c) + 2*A_int changes sign exactly once on each
+%   side of that minimum, i.e. a single miscibility gap.
 %
 %   If 2*A_int > -min mu_chem' (Lambda >= Lambda_c = 1.8 for nu_bar = 0.5
 %   and the default mu_chem), mechanics suppresses phase separation: a
@@ -20,9 +22,10 @@ function c_sp = find_spinodal_points(params)
 K = 2*params.A_int;
 stability = @(c) mu_chem_prime(c) + K;
 
-% Most unstable concentration: minimum of mu_chem'(c) on (0, 1).
+% Most unstable concentration: global minimum of mu_chem'(c) on (0, 1).
 edge = 1e-9;
-[c_min, s_min] = fminbnd(stability, edge, 1 - edge, optimset('TolX', 1e-12));
+[c_min, dmu_min] = min_mu_chem_prime();
+s_min = dmu_min + K;
 
 if s_min >= 0
     warning('find_spinodal_points:stable', ...
