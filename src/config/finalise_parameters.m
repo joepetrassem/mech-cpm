@@ -6,9 +6,12 @@ function params = finalise_parameters(params)
 %     R_gT     = R_g*T
 %     u0_used  = u0, or 0.05*min(c_rate)/3600 if u0 is empty (default) [1/s]
 %     A_int    = Lambda*(1 + 3*nu_bar)/(3*(1 + nu_bar))   incompatibility penalty
-%     Lambda_c = 3*(1 + nu_bar)/(1 + 3*nu_bar)            Lambda at which A_int = 1
-%                (for the default mu_chem, min mu_chem' = -2, phase separation
-%                 is suppressed for Lambda >= Lambda_c)
+%     Lambda_c = -min(mu_chem')*3*(1 + nu_bar)/(2*(1 + 3*nu_bar))
+%                critical coupling: phase separation is possible only for
+%                Lambda < Lambda_c, i.e. 2*A_int < -min(mu_chem'). Computed
+%                from mu_chem (MIN_MU_CHEM_PRIME); 1.8 for the paper's
+%                mu_chem (min mu_chem' = -2) and nu_bar = 0.5. Zero if
+%                mu_chem is monotonic (no phase separation at all).
 %     phase_separation = true if the critical points c_b and c_sp are finite.
 %                It is false when mechanics suppresses phase separation, in
 %                which case c_b = c_sp = [NaN NaN] and every particle stays
@@ -17,7 +20,8 @@ function params = finalise_parameters(params)
 params.nu_bar   = params.nu/(1 - 2*params.nu);
 params.R_gT     = params.R_g*params.T;
 params.A_int    = params.Lambda*(1 + 3*params.nu_bar)/(3*(1 + params.nu_bar));
-params.Lambda_c = 3*(1 + params.nu_bar)/(1 + 3*params.nu_bar);
+[~, dmu_min]    = min_mu_chem_prime();
+params.Lambda_c = max(0, -dmu_min)*3*(1 + params.nu_bar)/(2*(1 + 3*params.nu_bar));
 
 num = @(x, name, attrs) validateattributes(x, {'numeric'}, attrs, 'MechoCPM', name);
 
@@ -56,8 +60,12 @@ elseif ~all(isnan([params.c_b(:); params.c_sp(:)]))
 end
 num(params.binodal_grid_points,   'binodal_grid_points',   {'scalar', 'integer', '>=', 10});
 num(params.binodal_tol,           'binodal_tol',           {'scalar', 'real', 'positive'});
-num(params.binodal_initial_guess, 'binodal_initial_guess', {'numel', 2, 'real'});
-num(params.binodal_c_avg,         'binodal_c_avg',         {'scalar', 'real', '>', 0, '<', 1});
+if ~isempty(params.binodal_initial_guess)
+    num(params.binodal_initial_guess, 'binodal_initial_guess', {'numel', 2, 'real'});
+end
+if ~isempty(params.binodal_c_avg)
+    num(params.binodal_c_avg, 'binodal_c_avg', {'scalar', 'real', '>', 0, '<', 1});
+end
 
 n_seg = numel(params.soc_waypoints) - 1;
 if n_seg < 1

@@ -25,7 +25,7 @@ end
 function test_derived_mechanical_parameters(testCase)
 p = set_parameters(default_parameters(), 'Lambda', 1.32);
 verifyEqual(testCase, p.A_int, 1.32*(1 + 3*p.nu_bar)/(3*(1 + p.nu_bar)), 'AbsTol', 1e-14);
-verifyEqual(testCase, p.Lambda_c, 1.8, 'AbsTol', 1e-12);    % nu_bar = 0.5 (paper)
+verifyEqual(testCase, p.Lambda_c, 1.8, 'AbsTol', 1e-8);     % nu_bar = 0.5 (paper), from min mu_chem' = -2
 verifyError(testCase, @() set_parameters(p, 'A_int', 1), 'MechoCPM:set_parameters:derived');
 end
 
@@ -287,5 +287,15 @@ for sigma_y = [0, 0.2]
         sprintf('Phi differs between ode15s and ode15i (sigma_y = %g)', sigma_y));
     verifyLessThan(testCase, sqrt(mean(dsig(:).^2)), 1e-3);
 end
+end
+
+function test_unstable_initial_state_errors(testCase)
+% Starting single phase between the spinodal points is not allowed; starting
+% in the metastable range between a binodal and a spinodal point is.
+verifyError(testCase, @() run_simulation('Lambda', 0.99, 'soc_waypoints', [0.5, 0.99], ...
+    'n_groups', 2, 'verbose', false), 'MechoCPM:unstableStart');
+sol = run_simulation('Lambda', 0.99, 'soc_waypoints', [0.2, 0.25], 'n_groups', 1, ...
+    'sigma_R', 0, 'c_rate', 0.5, 'rest_time', 0, 'verbose', false);   % c_b1 = 0.157 < 0.2 < c_s1 = 0.286
+verifyEqual(testCase, sol.s(1), 0);
 end
 

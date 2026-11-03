@@ -49,6 +49,7 @@ timer    = tic;
 params   = build_particle_population(params);
 params   = compute_critical_points(params);
 protocol = build_current_protocol(params);
+check_initial_state(params);
 n        = params.n_groups;
 
 check_stress_regime(params);
@@ -131,6 +132,24 @@ sol.runtime  = toc(timer);
 if params.verbose
     fprintf('  done: %d phase-change events, Phi in [%+.2f, %+.2f] mV, %.1f s\n', ...
         n_events, 1000*min(sol.Phi), 1000*max(sol.Phi), sol.runtime);
+end
+end
+
+function check_initial_state(params)
+% The switching rule (paper, Eq. state_var) assumes every particle starts
+% single phase outside the spinodal region. A single-phase particle with
+% c_s1 < c_avg < c_s2 is unstable, and the first spinodal point it crosses
+% would assign the wrong morphology (e.g. lithiating from 0.5 crosses c_s2
+% and would become a lithium-poor shell).
+if ~params.phase_separation, return; end
+c0 = params.soc_waypoints(1);
+if c0 > params.c_sp(1) && c0 < params.c_sp(2)
+    error('MechoCPM:unstableStart', ...
+        ['The initial state c_avg = %g lies between the spinodal points [%.4f %.4f] ' ...
+         '(Lambda = %g), where a single-phase particle is unstable and the ' ...
+         'phase-switching rule is not defined. Start outside this range, e.g. ' ...
+         'soc_waypoints(1) <= %.4f or >= %.4f.'], ...
+        c0, params.c_sp, params.Lambda, params.c_sp(1), params.c_sp(2));
 end
 end
 

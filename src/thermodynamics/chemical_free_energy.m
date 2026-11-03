@@ -16,6 +16,8 @@ function [f, mu, dmu] = chemical_free_energy(c)
 %   To use another material, replace the three expressions below. f, mu and
 %   dmu are kept in this one file so they stay mutually consistent;
 %   tests/test_thermodynamics.m checks that mu = f' and dmu = mu'.
+%   See "Using your own chemical potential" in README.md for the
+%   requirements and for the tests that are specific to this mu_chem.
 
 Omega = 3;   % regular-solution interaction parameter [R_g*T]
 
