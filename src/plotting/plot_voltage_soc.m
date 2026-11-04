@@ -13,7 +13,7 @@ xlabel(ax, 'SOC');
 ylabel(ax, '$\Phi$ [mV]', 'Interpreter', 'latex');
 if numel(sols) == 1
     p = sols{1}.params;
-    title(ax, sprintf('\\Lambda = %g, \\sigma_y = %g, n = %d', p.Lambda, p.sigma_y, p.n_groups));
+    title(ax, sprintf('\\Lambda = %g, %s, n = %d', p.Lambda, medium_label(p, 'tex'), p.n_groups));
 end
 if ~isempty(labels)
     legend(ax, labels, 'Location', 'best', 'Interpreter', 'none');

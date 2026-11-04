@@ -1,6 +1,6 @@
 function run_all_examples(include_slow)
 %RUN_ALL_EXAMPLES Run every example script in this folder.
-%   RUN_ALL_EXAMPLES() runs examples 1-6 (about a minute in total).
+%   RUN_ALL_EXAMPLES() runs examples 1-6 and 8 (a few minutes in total).
 %   RUN_ALL_EXAMPLES(true) also runs the slow example 7 (paper Figs. 4-7,
 %   several minutes).
 if nargin < 1, include_slow = false; end

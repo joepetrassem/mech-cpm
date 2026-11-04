@@ -7,5 +7,5 @@ if nargin < 3 || isempty(ax), ax = new_figure(); end
 plot(ax, sol.t/3600, sol.sig_ext(:, 1:stride:end), 'LineWidth', 1);
 xlabel(ax, 'Time [h]');
 ylabel(ax, '$\sigma^{ext}_{rr}$', 'Interpreter', 'latex');
-title(ax, sprintf('\\sigma_y = %g', sol.params.sigma_y));
+title(ax, medium_label(sol.params, 'tex'));
 end

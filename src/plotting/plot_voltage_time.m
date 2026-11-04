@@ -24,8 +24,8 @@ end
 
 function s = run_title(p, n_runs)
 if n_runs == 1
-    s = sprintf('\\Lambda = %g, \\sigma_y = %g, n = %d, C/%g', ...
-        p.Lambda, p.sigma_y, p.n_groups, 1/p.c_rate(1));
+    s = sprintf('\\Lambda = %g, %s, n = %d, C/%g', ...
+        p.Lambda, medium_label(p, 'tex'), p.n_groups, 1/p.c_rate(1));
 else
     s = 'Electrode potential';
 end

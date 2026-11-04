@@ -261,3 +261,18 @@ for Lambda = [0, 0.5, 0.99, 1.32, 1.6, 1.75, 1.79]
 end
 end
 
+function test_ocv_with_elastic_shell(testCase)
+% Quasi-static curves with an elastic shell: mu gains +K_eff*(c_avg - c_form)
+% on every branch; the critical points are unchanged.
+base = set_parameters(default_parameters(), 'Lambda', 0.99, 'verbose', false);
+el   = set_parameters(base, 'external_medium', 'elastic', 'k_e', 10, 'c_form', 0.5);
+a = compute_ocv_hysteresis(base, 0, 201);
+b = compute_ocv_hysteresis(el, 0, 201);
+verifyEqual(testCase, b.c_b, a.c_b, 'AbsTol', 1e-12);
+verifyEqual(testCase, b.c_sp, a.c_sp, 'AbsTol', 1e-12);
+tilt = el.K_eff*(a.c_avg - 0.5);
+verifyEqual(testCase, b.mu_lith - a.mu_lith, tilt, 'AbsTol', 1e-12);
+verifyEqual(testCase, b.mu_delith - a.mu_delith, tilt, 'AbsTol', 1e-12);
+verifyEqual(testCase, b.lith.mu - a.lith.mu, el.K_eff*(a.lith.c - 0.5), 'AbsTol', 1e-12);
+end
+

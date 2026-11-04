@@ -15,12 +15,17 @@ function sig_dot = solve_stress_rate(sig_ext, c_dot, params)
 %   ODE15I solves the same equation as part of the DAE.
 %
 %   For Lambda = 0 the particle never loads the shell and sig_dot = -k*sig_ext
-%   (the stress stays at zero).
+%   (the stress stays at zero). For the elastic shell (external_medium =
+%   'elastic') the rate is explicit: sig_dot = -K_eff*c_dot/c_m.
 sig_ext = sig_ext(:);  c_dot = c_dot(:);
 k = params.k;
-if params.Lambda == 0 || params.sigma_y == 0
-    sig_dot = -k*sig_ext;
-    return
+switch external_stress_law(params)
+    case 'zero'
+        sig_dot = -k*sig_ext;
+        return
+    case 'elastic'
+        sig_dot = -params.K_eff*c_dot/params.c_m;      % explicit for the elastic shell
+        return
 end
 g  = @(sd) sd + k*(sig_ext - sig_ideal(surface_velocity(sd, c_dot, params), params));
 lo = -k*(sig_ext + params.sigma_y);

@@ -9,12 +9,12 @@ For `n` particle-size groups, the ensemble model of the paper ("Ensemble of inte
 ```
 dc_i/dt   = -j_i A_i / (F V_i)                                   (lithium conservation)
 0         = BV(c_i, s_i, Phi, sig_i) - j_i                       (Butler-Volmer)
-dsig_i/dt = -k (sig_i - sig_ideal(u_dot_i))                      (external stress)
+dsig_i/dt = -k (sig_i - sig_ideal(u_dot_i))                      (external stress, plastic shell)
 u_dot_i   = (dsig_i/dt) / (Lambda (1+3 nu_bar)) + (dc_i/dt) / c_m
 sig_ideal = -sigma_y tanh(u_dot / u0)
 ```
 
-and, for the whole electrode,
+(for an elastic shell the stress row is instead `dsig_i/dt = -K_eff (dc_i/dt)/c_m`, see the README), and, for the whole electrode,
 
 ```
 0 = I(t) - sum_i N_i A_i j_i                                     (current conservation)
@@ -45,7 +45,7 @@ and the right-hand side `reduced_rhs` computes `dy/dt` from `y` by solving the i
 
 1. **Electrode potential.** Solve current conservation, `sum_i N_i A_i BV_i(Phi) = I(t)`, for `Phi` (`solve_potential`). The total current increases strictly with `Phi`, so the root is unique. It is bracketed by stepping outwards from the previous `Phi` (a warm start) and refined with `fzero` to 1e-14 V.
 2. **Reaction currents and concentration rates.** `j_i = BV(c_i, s_i, Phi, sig_i)`, then `dc_i/dt = -j_i A_i / (F V_i)`.
-3. **Stress rates.** Solve the stress law for `dsig_i/dt` (`solve_stress_rate`). The residual `g(x) = x + k (sig_i + sigma_y tanh(u_dot_i(x)/u0))` increases strictly with `x` and changes sign on `[-k(sig_i + sigma_y), -k(sig_i - sigma_y)]`. The root is therefore unique, and bisection on that interval finds it to machine precision, however steep the `tanh` is.
+3. **Stress rates.** Solve the stress law for `dsig_i/dt` (`solve_stress_rate`). The residual `g(x) = x + k (sig_i + sigma_y tanh(u_dot_i(x)/u0))` increases strictly with `x` and changes sign on `[-k(sig_i + sigma_y), -k(sig_i - sigma_y)]`. The root is therefore unique, and bisection on that interval finds it to machine precision, however steep the `tanh` is. For the elastic shell the rate is explicit, `dsig_i/dt = -K_eff (dc_i/dt)/c_m`, and no root solve is needed.
 
 `ode15s` then integrates `dy/dt = f(t, y)` as an ordinary (stiff) ODE.
 

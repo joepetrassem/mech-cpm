@@ -35,21 +35,28 @@ dBV_dsig = (bv(c, sig + hs, Phi) - bv(c, sig - hs, Phi))/(2*hs);
 dBV_dPhi = (bv(c, sig, Phi + hp) - bv(c, sig, Phi - hp))/(2*hp);
 
 %% External-stress derivatives
-if params.Lambda == 0 || params.sigma_y == 0
-    dF3_dsigdot = ones(n, 1);
-    dF3_dcdot   = zeros(n, 1);
-else
-    K = params.Lambda*(1 + 3*params.nu_bar);
-    [~, dsig_du] = sig_ideal(surface_velocity(sig_dot, c_dot, params), params);
-    dF3_dsigdot = 1 - k*dsig_du/K;            % F3 = sig_dot + k*(sig - sig_ideal(u_dot))
-    dF3_dcdot   =   - k*dsig_du/params.c_m;
+switch external_stress_law(params)
+    case 'plastic'
+        K = params.Lambda*(1 + 3*params.nu_bar);
+        [~, dsig_du] = sig_ideal(surface_velocity(sig_dot, c_dot, params), params);
+        dF3_dsigdot = 1 - k*dsig_du/K;        % F3 = sig_dot + k*(sig - sig_ideal(u_dot))
+        dF3_dcdot   =   - k*dsig_du/params.c_m;
+        dF3_dsig    = k*ones(n, 1);
+    case 'elastic'                            % F3 = sig_dot + K_eff*c_dot/c_m
+        dF3_dsigdot = ones(n, 1);
+        dF3_dcdot   = params.K_eff/params.c_m*ones(n, 1);
+        dF3_dsig    = zeros(n, 1);
+    otherwise                                 % F3 = sig_dot + k*sig
+        dF3_dsigdot = ones(n, 1);
+        dF3_dcdot   = zeros(n, 1);
+        dF3_dsig    = k*ones(n, 1);
 end
 
 %% Assemble
 rows = [ic, ij, ij, ij, ij, is, ip*ones(1, n)];
 cols = [ij, ic, ij, is, ip*ones(1, n), is, ij];
 vals = [(params.Apart./(params.F*params.Vol))', dBV_dc', -ones(1, n), dBV_dsig', dBV_dPhi', ...
-        k*ones(1, n), -(params.N_part.*params.Apart)'];
+        dF3_dsig', -(params.N_part.*params.Apart)'];
 dFdy = sparse(rows, cols, vals, N, N);
 
 rows = [ic, is, is];

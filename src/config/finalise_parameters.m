@@ -5,6 +5,9 @@ function params = finalise_parameters(params)
 %     nu_bar   = nu/(1 - 2*nu)
 %     R_gT     = R_g*T
 %     u0_used  = u0, or 0.05*min(c_rate)/3600 if u0 is empty (default) [1/s]
+%     K_eff    = k_e*K/(k_e + K), K = Lambda*(1 + 3*nu_bar): stiffness of the
+%                particle and the elastic shell in series (0 if either is 0)
+%     c_form_used = c_form, or soc_waypoints(1) if c_form is empty
 %     A_int    = Lambda*(1 + 3*nu_bar)/(3*(1 + nu_bar))   incompatibility penalty
 %     Lambda_c = -min(mu_chem')*3*(1 + nu_bar)/(2*(1 + 3*nu_bar))
 %                critical coupling: phase separation is possible only for
@@ -23,9 +26,23 @@ params.A_int    = params.Lambda*(1 + 3*params.nu_bar)/(3*(1 + params.nu_bar));
 [~, dmu_min]    = min_mu_chem_prime();
 params.Lambda_c = max(0, -dmu_min)*3*(1 + params.nu_bar)/(2*(1 + 3*params.nu_bar));
 
+% Elastic shell: particle (bulk stiffness K) and shell (k_e) act as springs in series
+K = params.Lambda*(1 + 3*params.nu_bar);
+if K > 0 && isinf(params.k_e) && params.k_e > 0
+    params.K_eff = K;                                  % rigid medium
+elseif K > 0 && params.k_e > 0
+    params.K_eff = params.k_e*K/(params.k_e + K);
+else
+    params.K_eff = 0;
+end
+
 num = @(x, name, attrs) validateattributes(x, {'numeric'}, attrs, 'MechoCPM', name);
 
 num(params.Lambda,   'Lambda',   {'scalar', 'real', 'finite', 'nonnegative'});
+num(params.k_e,      'k_e',      {'scalar', 'real', 'nonnan', 'nonnegative'});   % Inf: rigid medium
+if ~any(strcmpi(params.external_medium, {'plastic', 'elastic', 'none'}))
+    error('MechoCPM:params', 'external_medium must be ''plastic'', ''elastic'' or ''none''.');
+end
 num(params.alpha,    'alpha',    {'scalar', 'real', 'finite', 'positive'});
 num(params.sigma_y,  'sigma_y',  {'scalar', 'real', 'finite', 'nonnegative'});
 num(params.nu,       'nu',       {'scalar', 'real', '>', -1, '<', 0.5});
@@ -42,6 +59,12 @@ num(params.sigma_R,  'sigma_R',  {'scalar', 'real', 'finite', 'nonnegative'});
 num(params.soc_waypoints, 'soc_waypoints', {'vector', 'real', '>', 0, '<', 1});
 num(params.c_rate,   'c_rate',   {'vector', 'real', 'finite', 'positive'});
 num(params.rest_time,'rest_time',{'scalar', 'real', 'finite', 'nonnegative'});
+if isempty(params.c_form)
+    params.c_form_used = params.soc_waypoints(1);
+else
+    num(params.c_form, 'c_form', {'scalar', 'real', '>=', 0, '<=', 1});
+    params.c_form_used = params.c_form;
+end
 if isempty(params.u0)
     params.u0_used = 0.05*min(params.c_rate(:))/3600;    % 5% of the nominal swelling rate
 else

@@ -55,8 +55,8 @@ n        = params.n_groups;
 check_stress_regime(params);
 
 if params.verbose
-    fprintf('MechoCPM: %d size groups, Lambda = %g (A_int = %.4g), sigma_y = %g\n', ...
-        n, params.Lambda, params.A_int, params.sigma_y);
+    fprintf('MechoCPM: %d size groups, Lambda = %g (A_int = %.4g), %s\n', ...
+        n, params.Lambda, params.A_int, medium_label(params));
     if params.phase_separation
         fprintf('  binodal points [%.4f %.4f], spinodal points [%.4f %.4f]\n', ...
             params.c_b, params.c_sp);
@@ -66,10 +66,12 @@ if params.verbose
     end
 end
 
-% Initial state: uniform concentration, single-phase particles, no external stress
+% Initial state: uniform concentration, single-phase particles. The external
+% stress is zero, except for an elastic shell formed at a filling c_form
+% different from the initial one.
 c0      = params.soc_waypoints(1)*params.c_m*ones(n, 1);
 s       = zeros(n, 1);
-sig_ext = zeros(n, 1);
+sig_ext = elastic_stress(c0, params);
 Phi0    = -mean(mu_hys(c0/params.c_m, s, sig_ext, params))/params.F;
 w       = [c0; zeros(n, 1); sig_ext; Phi0];
 
@@ -156,7 +158,7 @@ end
 function check_stress_regime(params)
 % The plastic-shell model behaves as a rigid-perfectly plastic shell when
 % u0 << swelling rate and Lambda*(1+3*nu_bar)*u0 << k*sigma_y. Warn otherwise.
-if params.Lambda == 0 || params.sigma_y == 0, return; end
+if ~strcmp(external_stress_law(params), 'plastic'), return; end
 rate = min(params.c_rate)/3600;                    % filling-fraction rate [1/s]
 K = params.Lambda*(1 + 3*params.nu_bar);
 if params.u0_used > 0.1*rate
