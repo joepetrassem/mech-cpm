@@ -43,13 +43,21 @@ params.nu  = 0.25;             % Poisson ratio (nu_bar = nu/(1-2*nu) is derived)
 
 %% Mechanics (main user-facing parameters)
 params.Lambda  = 0;            % mechanical coupling Lambda (0 = no internal stress)
-params.sigma_y = 0;            % scaled yield stress of the external shell, V_c*sigma_y/(R_g*T)
+
+%% External medium: 'plastic' (rapidly yielding plastic shell, sigma_y, k, u0),
+%% 'elastic' (elastic shell, k_e, c_form) or 'none' (sig_ext = 0)
+params.external_medium = 'plastic';
+params.sigma_y = 0;            % plastic: scaled yield stress of the shell, V_c*sigma_y/(R_g*T)
 params.alpha   = 0.33;         % swelling magnitude alpha = V_c*c_m/3 (displacement scale only)
 params.u0      = [];           % reference surface velocity in sig_ideal [1/s]. Empty (default):
                                % 0.05*min(c_rate)/3600, i.e. 5% of the nominal swelling rate,
                                % which keeps the shell rigid-plastic (u0 << swelling rate) and the
                                % switch smooth enough for ode15i at every C-rate. Derived: u0_used
 params.k       = 0.01;         % relaxation rate of sig_ext towards sig_ideal [1/s]
+params.k_e     = 0;            % elastic: scaled shell stiffness (same for all particles; Inf = rigid),
+                               % sig_ext = -k_e*(u_surf - u_free); stress in R_g*T/V_c, u in alpha*R
+params.c_form  = [];           % elastic: filling fraction at which the shell was formed
+                               % stress-free; empty: the initial filling soc_waypoints(1)
 
 %% Reaction kinetics
 params.I0 = 1;                 % exchange current density [A/m^2]

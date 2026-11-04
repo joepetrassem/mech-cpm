@@ -7,6 +7,5 @@ if nargin < 3 || isempty(ax), ax = new_figure(); end
 plot(ax, sol.t/3600, sol.mu(:, 1:stride:end)/sol.params.R_gT, 'LineWidth', 1);
 xlabel(ax, 'Time [h]');
 ylabel(ax, '$\mu/R_gT$', 'Interpreter', 'latex');
-title(ax, sprintf('\\Lambda = %g, \\sigma_y = %g', ...
-    sol.params.Lambda, sol.params.sigma_y));
+title(ax, sprintf('\\Lambda = %g, %s', sol.params.Lambda, medium_label(sol.params, 'tex')));
 end

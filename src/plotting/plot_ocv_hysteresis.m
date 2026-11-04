@@ -64,11 +64,14 @@ else
     ylim(ax, ylim(ax));                      % freeze the automatic limits
     ylabel(ax, '$\Phi_{eq}$ [mV]', 'Interpreter', 'latex');
 end
-if ocv.phase_separation
-    title(ax, sprintf('\\Lambda = %g', ocv.params.Lambda));
-else
-    title(ax, sprintf('\\Lambda = %g (no phase separation)', ocv.params.Lambda));
+ttl = sprintf('\\Lambda = %g', ocv.params.Lambda);
+if strcmp(external_stress_law(ocv.params), 'elastic')
+    ttl = [ttl ', ' medium_label(ocv.params, 'tex')];
 end
+if ~ocv.phase_separation
+    ttl = [ttl ' (no phase separation)'];
+end
+title(ax, ttl);
 if n_sig > 1, legend(ax, 'Location', 'best'); end
 
 %% Arrowheads: on the single-phase section before the jump, and on the

@@ -5,6 +5,11 @@ function ocv = compute_ocv_hysteresis(params, sig_ext, n_points)
 %   for one particle cycled quasi-statically, without time integration, for
 %   one or more external stresses sig_ext.
 %
+%   With an elastic shell (params.external_medium = 'elastic'), the shell
+%   stress -K_eff*(c_avg - c_form) is added to sig_ext at every c_avg, so the
+%   curves are tilted by +K_eff*(c_avg - c_form); lithiation and
+%   delithiation are shifted alike (an elastic shell adds no hysteresis).
+%
 %   Solution branches (paper Fig. 3a,b)
 %     single phase : mu_single = mu_chem(c_avg) - sig_ext, for all c_avg.
 %                    Stable outside [c_b1, c_b2], metastable on
@@ -62,7 +67,7 @@ c_sp    = params.c_sp;
 c_lo    = 0.005;
 c_hi    = 0.995;
 VT      = 1000*params.R_gT/params.F;        % thermal voltage [mV]
-mu_of   = @(c, s, j) mu_hys(c, s, sig_ext(j), params)/params.R_gT;
+mu_of   = @(c, s, j) mu_hys(c, s, sig_ext(j) + elastic_stress(c*params.c_m, params), params)/params.R_gT;
 
 %% Branches on a common grid
 c_avg = linspace(c_lo, c_hi, n_points);

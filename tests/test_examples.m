@@ -1,5 +1,5 @@
 function tests = test_examples
-%TEST_EXAMPLES Smoke test: examples 1-6 run without error and make figures.
+%TEST_EXAMPLES Smoke test: examples 1-6 and 8 run without error and make figures.
 %   Figures are created invisibly and closed afterwards. Example 7 (several
 %   minutes) is not run here.
 tests = functiontests(localfunctions);
@@ -23,6 +23,7 @@ function test_example_03(testCase), check_example(testCase, 'example_03_sigma_y_
 function test_example_04(testCase), check_example(testCase, 'example_04_crate_and_particles'); end
 function test_example_05(testCase), check_example(testCase, 'example_05_ocv_hysteresis'); end
 function test_example_06(testCase), check_example(testCase, 'example_06_critical_points_vs_Lambda'); end
+function test_example_08(testCase), check_example(testCase, 'example_08_elastic_shell'); end
 
 % -------------------------------------------------------------------------
 function check_example(testCase, name)

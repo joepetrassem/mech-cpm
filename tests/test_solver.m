@@ -299,3 +299,76 @@ sol = run_simulation('Lambda', 0.99, 'soc_waypoints', [0.2, 0.25], 'n_groups', 1
 verifyEqual(testCase, sol.s(1), 0);
 end
 
+function test_elastic_shell_parameters(testCase)
+p = default_parameters();
+verifyEqual(testCase, p.external_medium, 'plastic');
+K = 0.99*(1 + 3*p.nu_bar);
+q = set_parameters(p, 'external_medium', 'elastic', 'Lambda', 0.99, 'k_e', 5);
+verifyEqual(testCase, q.K_eff, 5*K/(5 + K), 'AbsTol', 1e-14);           % springs in series
+verifyEqual(testCase, q.c_form_used, q.soc_waypoints(1));               % default: initial filling
+r = set_parameters(q, 'k_e', Inf);
+verifyEqual(testCase, r.K_eff, K, 'AbsTol', 1e-14);                     % rigid medium
+verifyEqual(testCase, set_parameters(q, 'k_e', 0).K_eff, 0);
+verifyEqual(testCase, set_parameters(q, 'Lambda', 0).K_eff, 0);
+verifyError(testCase, @() set_parameters(p, 'external_medium', 'viscous'), 'MechoCPM:params');
+verifyError(testCase, @() set_parameters(p, 'k_e', -1), ?MException);
+verifyError(testCase, @() set_parameters(q, 'K_eff', 1), 'MechoCPM:set_parameters:derived');
+end
+
+function test_elastic_shell_stress_follows_filling(testCase)
+% sig_ext = -K_eff*(c_avg - c_form) for every particle along a whole cycle,
+% for both solvers and for a shell formed at another filling.
+for solver = {'ode15s', 'ode15i'}
+    for c_form = [NaN, 0.5]
+        args = {'external_medium', 'elastic', 'Lambda', 0.99, 'k_e', 5, 'n_groups', 3, ...
+                'c_rate', 0.5, 'solver', solver{1}, 'verbose', false};
+        if ~isnan(c_form), args = [args, {'c_form', c_form}]; end          %#ok<AGROW>
+        sol = run_simulation(args{:});
+        p = sol.params;
+        dev = sol.sig_ext + p.K_eff*(sol.theta - p.c_form_used);
+        verifyLessThan(testCase, max(abs(dev(:))), 1e-6, ...
+            sprintf('elastic stress relation (%s, c_form = %g)', solver{1}, p.c_form_used));
+        verifyEqual(testCase, sol.sig_ext(1, :), -p.K_eff*(p.soc_waypoints(1) - p.c_form_used)*ones(1, 3), ...
+            'AbsTol', 1e-12);
+    end
+end
+end
+
+function test_elastic_shell_shift_and_no_gap(testCase)
+% A single particle: the elastic shell shifts Phi by -K_eff*(c_avg - c_form)*R_g*T/F
+% on both branches (no extra hysteresis).
+common = {'n_groups', 1, 'sigma_R', 0, 'c_rate', 0.5, 'Lambda', 0.99, 'verbose', false};
+a = run_simulation(common{:}, 'external_medium', 'none');
+b = run_simulation(common{:}, 'external_medium', 'elastic', 'k_e', 5, 'c_form', 0.5);
+soc = [0.3, 0.5, 0.7];
+sa = voltage_summary(a, {'none'}, soc);  sb = voltage_summary(b, {'elastic'}, soc);
+VT = 1000*a.params.R_gT/a.params.F;
+shift = -b.params.K_eff*(soc - 0.5)*VT;     % Phi = -mu*R_g*T/F and mu gains +K_eff*(c - c_form)
+verifyEqual(testCase, sb.Phi_lith   - sa.Phi_lith,   shift, 'AbsTol', 0.05);
+verifyEqual(testCase, sb.Phi_delith - sa.Phi_delith, shift, 'AbsTol', 0.05);
+verifyEqual(testCase, sb.gap, sa.gap, 'AbsTol', 0.05);
+end
+
+function test_elastic_shell_jacobian_and_reduced_rhs(testCase)
+% The DAE Jacobian and the reduced right-hand side also hold for the elastic shell.
+p = set_parameters(default_parameters(), 'n_groups', 3, 'Lambda', 0.99, ...
+    'external_medium', 'elastic', 'k_e', 5, 'c_form', 0.4, 'verbose', false);
+p = compute_critical_points(build_particle_population(p));
+n = p.n_groups;
+c = [0.2; 0.5; 0.8]*p.c_m;  s = [0; 1; 0];
+sig = elastic_stress(c, p);
+I = -1e-4;
+[ydot, Phi, jtr] = reduced_rhs(10, [c; sig], s, 0, I, 0, 0, p);
+verifyEqual(testCase, ydot(n+1:end), -p.K_eff*ydot(1:n)/p.c_m, 'AbsTol', 1e-15);
+w = [c; jtr; sig; Phi];  wp = [ydot(1:n); zeros(n, 1); ydot(n+1:end); 0];
+verifyLessThan(testCase, norm(dae_residual(10, w, wp, s, I, 0, 0, p)), 1e-9);
+[J, Jp] = dae_jacobian(10, w, wp, s, I, 0, 0, p);
+F = @(ww, pp) dae_residual(10, ww, pp, s, I, 0, 0, p);
+for j = 1:3*n + 1
+    e = zeros(3*n + 1, 1);
+    e(j) = 1e-6*max(1, abs(w(j)));
+    verifyEqual(testCase, full(J(:, j)), (F(w + e, wp) - F(w - e, wp))/(2*e(j)), 'AbsTol', 1e-6, 'RelTol', 1e-4);
+    verifyEqual(testCase, full(Jp(:, j)), (F(w, wp + e) - F(w, wp - e))/(2*e(j)), 'AbsTol', 1e-6, 'RelTol', 1e-4);
+end
+end
+
