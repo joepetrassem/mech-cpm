@@ -32,9 +32,17 @@ for i = 1:numel(sols)
     fprintf('%-10g %8.4f %28.2e\n', p.k_e, p.K_eff, max(abs(dev(:))));
 end
 
-ax = new_figure();
-p  = sols{3}.params;
-plot(ax, sols{3}.theta, sols{3}.sig_ext, '.', 'MarkerSize', 4, 'HandleVisibility', 'off');
+% Stress against filling, lithiation in blue and delithiation in orange:
+% the two coincide, because an elastic shell has no hysteresis
+ax  = new_figure();
+sol = sols{3};
+p   = sol.params;
+for seg = direction_segments(sol)
+    plot(ax, sol.theta(seg.idx, :), sol.sig_ext(seg.idx, :), '.', 'MarkerSize', 5, ...
+        'Color', direction_colour(seg.direction), 'HandleVisibility', 'off');
+    plot(ax, NaN, NaN, '.', 'MarkerSize', 15, 'Color', direction_colour(seg.direction), ...
+        'DisplayName', seg.direction);                    % legend entry
+end
 c = linspace(0, 1, 2);
 plot(ax, c, -p.K_eff*(c - p.c_form_used), 'k--', 'DisplayName', '-K_{eff}(c_{avg} - c_{form})');
 xlabel(ax, 'c_{avg}');  ylabel(ax, '\sigma^{ext}');

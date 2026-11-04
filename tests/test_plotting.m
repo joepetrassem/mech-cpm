@@ -66,3 +66,30 @@ for a = arrows'
         sprintf('%s not tangent / not in the direction of travel', tag));
 end
 end
+
+function test_phase_fraction_coloured_by_direction(testCase)
+% Curves against SoC (other than voltage) use one colour for lithiation and
+% another for delithiation; voltage curves keep one colour per run.
+sol = run_simulation('n_groups', 3, 'c_rate', 0.5, 'Lambda', 0.33, 'verbose', false);
+ax = plot_phase_fraction({sol, sol}, {'a', 'b'});
+li = findall(ax, 'Type', 'line', 'Tag', 'lithiation');
+de = findall(ax, 'Type', 'line', 'Tag', 'delithiation');
+verifyNotEmpty(testCase, li);
+verifyNotEmpty(testCase, de);
+for h = li'
+    verifyGreaterThan(testCase, h.Color(3), h.Color(1));               % blue
+    verifyGreaterThan(testCase, h.XData(end), h.XData(1));             % SoC increases
+end
+for h = de'
+    verifyGreaterThan(testCase, h.Color(1), h.Color(3));               % orange
+    verifyLessThan(testCase, h.XData(end), h.XData(1));                % SoC decreases
+end
+verifyGreaterThan(testCase, numel(unique(vertcat(li.Color), 'rows')), 1);   % runs shaded apart
+close(ancestor(ax, 'figure'));
+
+ax = plot_voltage_soc({sol, sol}, {'a', 'b'});
+verifyNumElements(testCase, findall(ax, 'Type', 'line'), 2);               % unchanged
+verifyEmpty(testCase, findall(ax, 'Type', 'line', 'Tag', 'lithiation'));
+close(ancestor(ax, 'figure'));
+end
+

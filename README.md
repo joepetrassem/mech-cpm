@@ -52,7 +52,7 @@ results = runtests('tests');
 disp(table(results))
 ```
 
-All 54 tests should pass (`test_examples` runs examples 1-6 and 8 without figures on screen, so allow a few minutes). They check, among other things, that
+All 55 tests should pass (`test_examples` runs examples 1-6 and 8 without figures on screen, so allow a few minutes). They check, among other things, that
 
 - `mu_chem`, `mu_chem_prime` and `f_chem` are mutually consistent and equal the paper's `mu_chem`;
 - the spinodal points satisfy the coherent-spinodal condition `mu_chem'(c) + 2*A_int = 0`, exist only for `Lambda < Lambda_c` (1.8 for the paper's `mu_chem`), match the closed form of the regular solution, and start-up inside the spinodal range is rejected; and the binodal points satisfy the common-tangent construction at `Lambda = 0`;
@@ -116,14 +116,14 @@ Names are case-insensitive, misspelt names raise an error listing the valid ones
 
 | Name | Default | Paper symbol | Description |
 |---|---|---|---|
-| `Lambda` | 0 | Lambda | Mechanical coupling, `2*G*V_c^2*c_m/(3*R_g*T)`: elastic misfit energy of a fully lithiated particle over `R_g*T` (0 = no internal stress; phase separation needs `Lambda < Lambda_c = 1.8`) |
+| `Lambda` | 1 | Lambda | Mechanical coupling, `2*G*V_c^2*c_m/(3*R_g*T)`: elastic misfit energy of a fully lithiated particle over `R_g*T` (0 = no internal stress; phase separation needs `Lambda < Lambda_c = 1.8`) |
 | `external_medium` | `'plastic'` | | External medium around each particle: `'plastic'` (rapidly yielding plastic shell), `'elastic'` (elastic shell) or `'none'`. See [External medium](#external-medium) |
-| `sigma_y` | 0 | sigma_y^* | Plastic shell: scaled yield stress, `V_c*sigma_y/(R_g*T)` |
+| `sigma_y` | 0.6 | sigma_y^* | Plastic shell: scaled yield stress, `V_c*sigma_y/(R_g*T)` |
 | `k_e` | 0 | k_e | Elastic shell: scaled stiffness, the same for all particles (`Inf` = rigid medium) |
 | `alpha` | 0.33 | alpha | Swelling magnitude `V_c*c_m/3`; displacement and strain scale only, does not affect the electrochemistry |
 | `nu` | 0.25 | nu | Poisson ratio; `nu_bar = nu/(1-2*nu)` (= 0.5) is derived |
 | `n_groups` | 100 | n | Number of particle-size groups |
-| `c_rate` | 0.002 | | C-rate; a scalar, or one value per protocol segment |
+| `c_rate` | 0.01 | | C-rate; a scalar, or one value per protocol segment |
 | `soc_waypoints` | `[0.01 0.99 0.01]` | | SoC targets; the protocol has one segment between each pair |
 
 ### Other parameters
@@ -361,6 +361,7 @@ MechoCPM/
 |   |-- analysis/                   run_parameter_sweep, compute_ocv_hysteresis, voltage_summary
 |   `-- plotting/                   plot_voltage_soc, plot_voltage_time, plot_potential, plot_external_stress,
 |                                   plot_phase_fraction, plot_filling_ratio, plot_ocv_hysteresis, plot_gibbs_minimisers,
+|                                   direction_segments, direction_colour,
 |                                   plot_results_comparison, new_figure, make_fixed_figure
 |-- docs/solver_formulation.md      how the model is integrated in time
 |-- examples/                       example_01 ... example_08, run_all_examples
@@ -390,6 +391,7 @@ For the electrode potential:
 | Function | Output |
 |---|---|
 | `plot_voltage_soc(sols, labels)` | `Phi` [mV] against SoC |
+| `plot_phase_fraction(sols, labels)` | Fraction of phase-separated particles against SoC, lithiation in blue and delithiation in orange (one shade per run) |
 | `plot_voltage_time(sols, labels)` | `Phi` [mV] against time, with the protocol blocks marked |
 | `voltage_summary(sols, labels, soc_points)` | Prints, and returns, `Phi` on the lithiation and delithiation branches at the given SoC (default 0.25, 0.5, 0.75), the gap between them and the range of `Phi` |
 | `compute_ocv_hysteresis` | Single-particle branches (single phase with stable/metastable/unstable parts, mixed-phase line) and the lithiation and delithiation paths, as `mu` and `Phi` |
