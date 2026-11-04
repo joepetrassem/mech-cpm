@@ -42,12 +42,12 @@ params.c_m = 2.7e5;            % maximum Li concentration [mol/m^3]
 params.nu  = 0.25;             % Poisson ratio (nu_bar = nu/(1-2*nu) is derived)
 
 %% Mechanics (main user-facing parameters)
-params.Lambda  = 0;            % mechanical coupling Lambda (0 = no internal stress)
+params.Lambda  = 1;            % mechanical coupling Lambda (0 = no internal stress)
 
 %% External medium: 'plastic' (rapidly yielding plastic shell, sigma_y, k, u0),
 %% 'elastic' (elastic shell, k_e, c_form) or 'none' (sig_ext = 0)
 params.external_medium = 'plastic';
-params.sigma_y = 0;            % plastic: scaled yield stress of the shell, V_c*sigma_y/(R_g*T)
+params.sigma_y = 0.6;            % plastic: scaled yield stress of the shell, V_c*sigma_y/(R_g*T)
 params.alpha   = 0.33;         % swelling magnitude alpha = V_c*c_m/3 (displacement scale only)
 params.u0      = [];           % reference surface velocity in sig_ideal [1/s]. Empty (default):
                                % 0.05*min(c_rate)/3600, i.e. 5% of the nominal swelling rate,
@@ -71,7 +71,7 @@ params.size_distribution = 'uniform';  % 'uniform' or 'lognormal'
 
 %% Cycling protocol
 params.soc_waypoints = [0.01, 0.99, 0.01]; % SoC targets; one segment between each pair
-params.c_rate        = 0.002;              % scalar, or one value per segment
+params.c_rate        = 0.01;              % scalar, or one value per segment
 params.rest_time     = 100;                % open-circuit rest before cycling [s]
 
 %% Critical points: binodal c_b = [c_b1 c_b2], spinodal c_sp = [c_s1 c_s2]
