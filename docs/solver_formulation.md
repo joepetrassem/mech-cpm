@@ -112,9 +112,3 @@ Each evaluation of `f` solves for `Phi` (a bracketed `fzero`, usually a few iter
 | `src/mechanics/solve_stress_rate.m` | `dsig/dt` from the implicit stress law |
 | `src/solver/update_phase_state.m` | Phase-switching rule (shared) |
 | `src/solver/solve_block.m`, `dae_residual.m`, `dae_jacobian.m`, `consistent_initial_conditions.m` | Fully implicit DAE path (`ode15i`) |
-
-## 11. Note for the manuscript
-
-The manuscript currently says that the ensemble is written as an index-1 DAE and solved with `ode15i`, and that the implicit stress law "is handled directly by the fully implicit solver". If the results are produced with the default solver, a description along these lines would match the code:
-
-> The ensemble model is an index-one DAE: the electrode potential and the reaction currents are fixed by current conservation and Butler-Volmer kinetics, and the stress law is implicit in the stress rate. Because the total current is strictly increasing in the potential and the stress-law residual is strictly increasing in the stress rate, both have unique solutions for any state. We therefore integrate the average concentrations and external stresses with MATLAB's *ode15s*, solving for the potential (bracketed root finding) and for each stress rate (bisection) at every evaluation of the right-hand side.
