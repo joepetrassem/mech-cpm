@@ -22,7 +22,6 @@ Symbols in the code follow the paper (see [Notation](#notation)); the source com
 - [Repository layout](#repository-layout)
 - [Examples](#examples)
 - [Output](#output)
-- [Publishing this repository on GitHub](#publishing-this-repository-on-github)
 
 ## Quick start
 
@@ -279,7 +278,7 @@ By default (`solver = 'ode15s'`), the code therefore integrates only `y = [c_avg
 
 The fully implicit DAE in `(c_avg, j_tr, sig_ext, Phi)` is still available with `solver = 'ode15i'` (`solve_block`, `dae_residual`, `dae_jacobian`, `consistent_initial_conditions`). It can stop at current reversals with the surface-velocity stress model when many particles are present.
 
-See [`docs/solver_formulation.md`](docs/solver_formulation.md) for the full description, the numerical settings and a suggested wording for the manuscript.
+See [`docs/solver_formulation.md`](docs/solver_formulation.md) for the full description and the numerical settings.
 
 ## Using your own chemical potential
 
@@ -395,33 +394,6 @@ For the electrode potential:
 | `compute_ocv_hysteresis` | Single-particle branches (single phase with stable/metastable/unstable parts, mixed-phase line) and the lithiation and delithiation paths, as `mu` and `Phi` |
 | `plot_gibbs_minimisers` | Fig. 3a,b: single- and mixed-phase branches |
 | `plot_ocv_hysteresis(ocv)`, `plot_ocv_hysteresis(ocv, [], 'Phi')` | Fig. 3c,d: cycling paths as `mu`, or as the equilibrium potential `-mu*R_g*T/F` [mV] |
-
-## Publishing this repository on GitHub
-
-1. **Install Git** (not currently installed on this machine): download "Git for Windows" from <https://git-scm.com/download/win>, then open a new PowerShell window and check `git --version`. Tell Git who you are, once:
-   ```bash
-   git config --global user.name "Your Name"
-   git config --global user.email "you@example.com"
-   ```
-2. **Create the repository on GitHub.** Sign in at <https://github.com>, click **New repository**, choose a name (for example `MechoCPM`), set it to **Public** (or Private for now), and leave "Add a README", ".gitignore" and "license" **unticked**: they already exist locally. Click **Create repository** and copy its URL, e.g. `https://github.com/<your-username>/MechoCPM.git`.
-3. **Choose a licence** and add it as a file named `LICENSE` in this folder, and replace the `TODO` in the section below. MIT or BSD-3-Clause are common for academic code. Without a licence, others have no legal right to reuse the code.
-4. **Push the code** from PowerShell, inside the folder that contains this README:
-   ```bash
-   cd path\to\MechoCPM
-   git init
-   git add .
-   git status
-   git commit -m "Initial release: code accompanying the JES paper"
-   git branch -M main
-   git remote add origin https://github.com/<your-username>/MechoCPM.git
-   git push -u origin main
-   ```
-   `git status` before committing should list the source files, `tests/data/original_code_reference.mat` and no stray `.mat` or `.asv` files (`.gitignore` excludes them). GitHub may ask you to sign in in a browser the first time.
-5. **Check the tests on GitHub.** Open the repository's **Actions** tab: the "MATLAB tests" workflow runs on every push and should turn green after a few minutes. If it asks for a MATLAB licence, check that the repository is public (free for public repositories).
-6. **Finish the repository page.** Add a short description and topics in the repository's settings (About box), and replace the `doi` placeholder in `CITATION.cff` once the paper is published.
-7. **Optional: get a citable DOI.** Link the repository to <https://zenodo.org>, then create a GitHub *Release* (for example `v1.0.0`). Zenodo archives it and gives it a DOI that you can cite in the paper's "Code availability" statement.
-
-If you prefer not to use the command line, **GitHub Desktop** (<https://desktop.github.com>) does steps 1, 2 and 4 with buttons: *File > Add local repository*, then *Publish repository*.
 
 ## Citation
 
