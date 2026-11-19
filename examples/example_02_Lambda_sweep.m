@@ -13,3 +13,4 @@ plot_voltage_soc(sols, labels);
 plot_voltage_time(sols, labels);
 voltage_summary(sols, labels);
 plot_phase_fraction(sols, labels);
+plot_filling_spread(sols, labels);

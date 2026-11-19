@@ -51,7 +51,7 @@ results = runtests('tests');
 disp(table(results))
 ```
 
-All 54 tests should pass (`test_examples` runs examples 1-6 and 8 without figures on screen, so allow a few minutes). They check, among other things, that
+All 55 tests should pass (`test_examples` runs examples 1-6 and 8 without figures on screen, so allow a few minutes). They check, among other things, that
 
 - `mu_chem`, `mu_chem_prime` and `f_chem` are mutually consistent and equal the paper's `mu_chem`;
 - the spinodal points satisfy the coherent-spinodal condition `mu_chem'(c) + 2*A_int = 0`, exist only for `Lambda < Lambda_c` (1.8 for the paper's `mu_chem`), match the closed form of the regular solution, and start-up inside the spinodal range is rejected; and the binodal points satisfy the common-tangent construction at `Lambda = 0`;
@@ -359,8 +359,8 @@ MechoCPM/
 |   |                               elastic_stress, medium_label
 |   |-- analysis/                   run_parameter_sweep, compute_ocv_hysteresis, voltage_summary
 |   `-- plotting/                   plot_voltage_soc, plot_voltage_time, plot_potential, plot_external_stress,
-|                                   plot_phase_fraction, plot_filling_ratio, plot_ocv_hysteresis, plot_gibbs_minimisers,
-|                                   plot_results_comparison, new_figure, make_fixed_figure
+|                                   plot_phase_fraction, plot_filling_spread, plot_filling_ratio, plot_ocv_hysteresis,
+|                                   plot_gibbs_minimisers, plot_results_comparison, new_figure, make_fixed_figure
 |-- docs/solver_formulation.md      how the model is integrated in time
 |-- examples/                       example_01 ... example_08, run_all_examples
 |-- tests/                          test_thermodynamics, test_solver, test_examples, test_plotting, data/original_code_reference.mat
@@ -392,6 +392,8 @@ For the electrode potential:
 | `plot_voltage_time(sols, labels)` | `Phi` [mV] against time, with the protocol blocks marked |
 | `voltage_summary(sols, labels, soc_points)` | Prints, and returns, `Phi` on the lithiation and delithiation branches at the given SoC (default 0.25, 0.5, 0.75), the gap between them and the range of `Phi` |
 | `compute_ocv_hysteresis` | Single-particle branches (single phase with stable/metastable/unstable parts, mixed-phase line) and the lithiation and delithiation paths, as `mu` and `Phi` |
+| `plot_phase_fraction(sols, labels)` | Number fraction of phase-separated particles against SoC |
+| `plot_filling_spread(sols, labels)` | Standard deviation of `c_avg` over the size groups, `std(sol.theta, 0, 2)`, against SoC: zero while the groups fill uniformly, growing once the mosaic instability sets in |
 | `plot_gibbs_minimisers` | Fig. 3a,b: single- and mixed-phase branches |
 | `plot_ocv_hysteresis(ocv)`, `plot_ocv_hysteresis(ocv, [], 'Phi')` | Fig. 3c,d: cycling paths as `mu`, or as the equilibrium potential `-mu*R_g*T/F` [mV] |
 

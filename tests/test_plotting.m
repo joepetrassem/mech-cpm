@@ -1,5 +1,6 @@
 function tests = test_plotting
-%TEST_PLOTTING Arrowheads of PLOT_OCV_HYSTERESIS follow the cycling paths.
+%TEST_PLOTTING Arrowheads of PLOT_OCV_HYSTERESIS follow the cycling paths;
+%   PLOT_FILLING_SPREAD plots std(theta, 0, 2).
 tests = functiontests(localfunctions);
 end
 
@@ -65,4 +66,18 @@ for a = arrows'
     verifyGreaterThan(testCase, dot(d, t), cosd(10), ...
         sprintf('%s not tangent / not in the direction of travel', tag));
 end
+end
+
+% -------------------------------------------------------------------------
+function test_filling_spread_is_std_of_theta(testCase)
+theta = [0.1 0.1 0.1; 0.2 0.3 0.4; 0.5 0.9 0.6];
+sols = {struct('SOC', mean(theta, 2), 'theta', theta), ...
+        struct('SOC', mean(theta, 2), 'theta', 0.5*theta)};
+ax = plot_filling_spread(sols, {'a', 'b'});
+lines = flipud(findobj(ax, 'Type', 'line'));          % plotting order
+verifyNumElements(testCase, lines, 2);
+verifyEqual(testCase, lines(1).YData(:), std(theta, 0, 2), 'AbsTol', 1e-12);
+verifyEqual(testCase, lines(2).YData(:), std(0.5*theta, 0, 2), 'AbsTol', 1e-12);
+verifyEqual(testCase, lines(1).XData(:), mean(theta, 2), 'AbsTol', 1e-12);
+close(ancestor(ax, 'figure'));
 end
