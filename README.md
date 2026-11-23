@@ -4,7 +4,7 @@
 
 MATLAB code accompanying *Coupled chemo-mechanical framework for phase-changing electrodes* (J. Petrassem de Sousa, W. Clarke, A. Galvis, S. Sahu and J. M. Foster, Journal of The Electrochemical Society, 2026).
 
-The code simulates galvanostatic cycling of an ensemble of electrode particles with a distribution of sizes. Each particle is either single-phase or phase-separated into a core and a shell. Transitions are triggered when the particle's average concentration `c_avg` crosses a spinodal point (single phase -> core-shell) or a binodal point (core-shell -> single phase). Mechanics enters in two independent ways, following the scaling of the paper. The mechanical coupling `Lambda`, the ratio of the elastic misfit energy of a fully lithiated particle to the thermal energy, sets the internal incompatibility stress between core and shell: it shifts the spinodal and binodal points and tilts the mixed-phase branch of the potential. An external radial stress `sigma_ext`, which relaxes towards a plastic yield stress `sigma_y`, translates the potential rigidly. Stresses are measured in units of `R_g*T/V_c` (about 0.3 GPa), so the external stress enters the potential with unit coefficient.
+The code simulates galvanostatic (or constant-current constant-voltage) cycling of an ensemble of electrode particles with a distribution of sizes. Each particle is either single-phase or phase-separated into a core and a shell. Transitions are triggered when the particle's average concentration `c_avg` crosses a spinodal point (single phase -> core-shell) or a binodal point (core-shell -> single phase). Mechanics enters in two independent ways, following the scaling of the paper. The mechanical coupling `Lambda`, the ratio of the elastic misfit energy of a fully lithiated particle to the thermal energy, sets the internal incompatibility stress between core and shell: it shifts the spinodal and binodal points and tilts the mixed-phase branch of the potential. An external radial stress `sigma_ext`, which relaxes towards a plastic yield stress `sigma_y`, translates the potential rigidly. Stresses are measured in units of `R_g*T/V_c` (about 0.3 GPa), so the external stress enters the potential with unit coefficient.
 
 Symbols in the code follow the paper (see [Notation](#notation)); the source comments name the paper sections they implement.
 
@@ -13,6 +13,7 @@ Symbols in the code follow the paper (see [Notation](#notation)); the source com
 - [Quick start](#quick-start)
 - [Testing that everything works](#testing-that-everything-works)
 - [Choosing parameters](#choosing-parameters)
+- [CCCV cycling](#cccv-cycling)
 - [Binodal points: analytical vs grid search](#binodal-points-analytical-vs-grid-search)
 - [Notation](#notation)
 - [Model summary](#model-summary)
@@ -51,7 +52,7 @@ results = runtests('tests');
 disp(table(results))
 ```
 
-All 55 tests should pass (`test_examples` runs examples 1-6 and 8 without figures on screen, so allow a few minutes). They check, among other things, that
+All 62 tests should pass (`test_examples` runs examples 1-6, 8 and 9 without figures on screen, so allow a few minutes). They check, among other things, that
 
 - `mu_chem`, `mu_chem_prime` and `f_chem` are mutually consistent and equal the paper's `mu_chem`;
 - the spinodal points satisfy the coherent-spinodal condition `mu_chem'(c) + 2*A_int = 0`, exist only for `Lambda < Lambda_c` (1.8 for the paper's `mu_chem`), match the closed form of the regular solution, and start-up inside the spinodal range is rejected; and the binodal points satisfy the common-tangent construction at `Lambda = 0`;
@@ -86,6 +87,7 @@ What to expect from each example:
 | `example_05_ocv_hysteresis` | 1 s | Paper Fig. 3a,b: single-phase (dark blue) and mixed-phase (blue) solution branches for `Lambda = 0` (flat mixed-phase line) and `Lambda = 0.99` (sloped line). Fig. 3c,d: lithiation and delithiation paths for `Lambda = 0` and `Lambda = 0.99`, each with `sig_ext = -0.6` (red), 0 (black), 0.6 (blue): single phase up to the spinodal point (metastable beyond the binodal point), a vertical jump onto the mixed-phase line, phase separation to the far binodal point, the unstable single-phase states dotted, and arrowheads tangent to the paths showing the direction of charge. Also `Lambda = 2 > Lambda_c`, where there is no phase separation and both paths follow `mu_chem - sig_ext`. Prints `c_b = [0.0707 0.9293]`, `c_sp = [0.2113 0.7887]` and jumps in mu of -0.415 / +0.415 for `Lambda = 0`; `c_b = [0.1570 0.8430]`, `c_sp = [0.2857 0.7143]` and jumps of -0.134 / +0.134 for `Lambda = 0.99`; and the equilibrium potentials at c_avg = 0.5, which shift by about +-15.5 mV for `sig_ext = -+0.6` |
 | `example_06_critical_points_vs_Lambda` | seconds | Paper Fig. 2: spinodal and binodal points against `Lambda`, with `Lambda_c = 1.8` marked; prints the largest analytical vs grid-search difference (below 1e-3) |
 | `example_07_external_stress_comparison` | several minutes | Paper Figs. 4/6 (filling ratio of each particle group), Fig. 7 (electrode potential against SoC with and without external stress, `Lambda = 1.32`, `sigma_y = 0.8`), the electrode potential against time and the external stress of each particle. With these values the stress takes `Delta c` of about 0.48 to switch after the reversal, so the full gap increase of about 41 mV (`2*0.8*R_g*T/F`) is only reached on the second half of delithiation; the script prints the gap increase at SoC = 0.25, 0.5 and 0.75 |
+| `example_09_cccv` | seconds | CCCV cycling at C/5 with the default (silicon-like) cut-offs: electrode potential and current against time for constant current only, CCCV with a hold after lithiation, and CCCV with holds after both; the potential stays at -50 mV (or +70 mV) during each hold while the current decays to C/40. Prints the potential summary and a table of every CC and CV step (duration, SoC at its start and end, final current) |
 | `example_08_elastic_shell` | about a minute | Electrode potential against SoC and time for an elastic shell with `k_e` = 0, 2, 10 and `Inf` (rigid), `Lambda = 0.99`: the curves tilt more steeply as `k_e` grows, with no extra gap between lithiation and delithiation. Prints `K_eff` for each run and confirms `sig_ext = -K_eff*(c_avg - c_form)` for every particle; plots the stress against `c_avg` and the quasi-static curves with and without the shell |
 
 **3. A quick check by hand.** With no mechanics the binodal points are the classical regular-solution values:
@@ -115,15 +117,16 @@ Names are case-insensitive, misspelt names raise an error listing the valid ones
 
 | Name | Default | Paper symbol | Description |
 |---|---|---|---|
-| `Lambda` | 0 | Lambda | Mechanical coupling, `2*G*V_c^2*c_m/(3*R_g*T)`: elastic misfit energy of a fully lithiated particle over `R_g*T` (0 = no internal stress; phase separation needs `Lambda < Lambda_c = 1.8`) |
+| `Lambda` | 1 | Lambda | Mechanical coupling, `2*G*V_c^2*c_m/(3*R_g*T)`: elastic misfit energy of a fully lithiated particle over `R_g*T` (0 = no internal stress; phase separation needs `Lambda < Lambda_c = 1.8`) |
 | `external_medium` | `'plastic'` | | External medium around each particle: `'plastic'` (rapidly yielding plastic shell), `'elastic'` (elastic shell) or `'none'`. See [External medium](#external-medium) |
-| `sigma_y` | 0 | sigma_y^* | Plastic shell: scaled yield stress, `V_c*sigma_y/(R_g*T)` |
+| `sigma_y` | 0.6 | sigma_y^* | Plastic shell: scaled yield stress, `V_c*sigma_y/(R_g*T)` |
 | `k_e` | 0 | k_e | Elastic shell: scaled stiffness, the same for all particles (`Inf` = rigid medium) |
 | `alpha` | 0.33 | alpha | Swelling magnitude `V_c*c_m/3`; displacement and strain scale only, does not affect the electrochemistry |
 | `nu` | 0.25 | nu | Poisson ratio; `nu_bar = nu/(1-2*nu)` (= 0.5) is derived |
 | `n_groups` | 100 | n | Number of particle-size groups |
-| `c_rate` | 0.002 | | C-rate; a scalar, or one value per protocol segment |
-| `soc_waypoints` | `[0.01 0.99 0.01]` | | SoC targets; the protocol has one segment between each pair |
+| `c_rate` | 0.01 | | C-rate; a scalar, or one value per protocol segment |
+| `soc_waypoints` | `[0.01 0.99 0.01]` | | SoC targets; the protocol has one segment between each pair (with CCCV, backstops behind the cut-offs) |
+| `protocol_type` | `'CC'` | | `'CC'`: constant current between the SoC waypoints; `'CCCV'`: constant current to a cut-off potential, then a constant-voltage hold. See [CCCV cycling](#cccv-cycling) |
 
 ### Other parameters
 
@@ -133,6 +136,10 @@ Names are case-insensitive, misspelt names raise an error listing the valid ones
 | `size_distribution` | `'uniform'` | `'uniform'` or `'lognormal'` |
 | `N_total` | 1e13 | Total number of particles N (only rescales capacity and current) |
 | `rest_time` | 100 s | Open-circuit rest before cycling |
+| `V_cutoff` | `[-50 70]` mV | CCCV: cut-off potentials `[lithiation, delithiation]`, relative to the reference of `mu_chem` |
+| `I_cutoff` | 0.025 (C/40) | CCCV: the constant-voltage hold ends when `|I|` falls below this C-rate; must be smaller than `c_rate` |
+| `cv_hold` | `'lith'` | CCCV: constant-voltage hold after `'lith'`, `'delith'`, `'both'` or `'none'` |
+| `cv_max_time` | `[]` (auto) | CCCV: longest constant-voltage hold [s]; empty means `3600/I_cutoff` (40 h for C/40) |
 | `c_form` | `[]` (auto) | Elastic shell: filling fraction at which the shell was formed stress-free; empty means the initial filling `soc_waypoints(1)` |
 | `k` | 0.01 1/s | Plastic shell: relaxation rate of the external stress |
 | `u0` | `[]` (auto) | Plastic shell: reference surface velocity in `sigma_ideal` [1/s]. Empty: `0.05*min(c_rate)/3600`, 5% of the nominal swelling rate (stored as `u0_used`). The shell acts as rigid-plastic when `u0` is much smaller than the swelling rate and `Lambda*(1+3*nu_bar)*u0` much smaller than `k*sigma_y`; `run_simulation` warns if not. Much smaller values make the switch very sharp, which slows the integration (and can stop `ode15i`) |
@@ -170,6 +177,32 @@ With the new scaling the external stress acts even when `Lambda = 0`, which the 
 plot_voltage_soc(sols, labels);
 voltage_summary(sols, labels);
 ```
+
+## CCCV cycling
+
+By default (`protocol_type = 'CC'`) the current is constant between the SoC waypoints. With `protocol_type = 'CCCV'` each charge or discharge has up to two steps:
+
+1. **Constant current (CC)** at `c_rate` until the electrode potential reaches the cut-off: `V_cutoff(1)` when lithiating, `V_cutoff(2)` when delithiating. The SoC waypoint acts as a backstop: if it is reached first, the step ends there and no hold follows.
+2. **Constant voltage (CV)**, if `cv_hold` covers that direction. The potential is held at the cut-off until the current falls below `I_cutoff`, or `cv_max_time` has passed (with a warning).
+
+```matlab
+sol = run_simulation('protocol_type', 'CCCV', 'c_rate', 0.2, ...   % CC at C/5
+    'soc_waypoints', [0.01, 0.999, 0.001], ...                     % backstops near 0 and 1
+    'V_cutoff', [-50, 70], 'I_cutoff', 0.025, 'cv_hold', 'lith');   % defaults shown
+plot_voltage_time(sol);    % dashed lines mark the start of each CV hold
+plot_current_time(sol);    % current as a C-rate: the CV tail decays to C/40
+```
+
+The default values follow a typical silicon half-cell. There, lithiation runs at constant current to about 10 mV vs Li, just past the lithiation plateau and above lithium plating. A CV hold then follows until the current falls to C/20-C/50. Delithiation runs at constant current to about 1 V, well past the plateau, with no hold. Here, `V_cutoff(1) = -50 mV` ends the CC step shortly before full lithiation, so the hold supplies the last few per cent. `V_cutoff(2) = +70 mV` lets delithiation run almost to empty. `I_cutoff = 0.025` (C/40) sits in that range.
+
+How to choose the values:
+
+- **Potentials are relative.** `Phi` is measured from the reference of `mu_chem` (0 mV is the plateau of the paper's `mu_chem`), not as a cell voltage. Choose cut-offs relative to the plateau, and allow for the external stress, which shifts the potential by about `-+sigma_y*R_g*T/F` (15.5 mV for `sigma_y = 0.6`).
+- **The CC current must be faster than the cut-off current.** `I_cutoff` must be smaller than `c_rate`, otherwise the hold would end at once; `set_parameters` raises an error if not. For the default `c_rate = 0.01` (C/100), use for example `c_rate = 0.2` or a smaller `I_cutoff`.
+- **Set the waypoints near the ends.** With CCCV, put the SoC waypoints close to 0 and 1, e.g. `[0.01, 0.999, 0.001]`, so that the cut-offs, not the waypoints, end each step.
+- **CCCV needs `ode15s`.** It runs only with `solver = 'ode15s'`, the default.
+
+During a CV hold, all particles share the held potential, and each reaction current follows directly from Butler-Volmer (no current-conservation solve is needed). The total current `sum_i N_i*A_i*jtr_i` is then an output, stored in `sol.I`. `sol.cv` marks the hold, and `sol.protocol.steps` lists every CC and CV step with its segment and start and end times. With the plastic shell, the external stress relaxes partly as the current, and with it the surface velocity, decays during the hold. Example 9 compares CC with CCCV holds after lithiation only and after both directions.
 
 ## Binodal points: analytical vs grid search
 
@@ -358,12 +391,12 @@ MechoCPM/
 |   |-- mechanics/                  external_stress_law, sig_ideal, surface_velocity, solve_stress_rate,
 |   |                               elastic_stress, medium_label
 |   |-- analysis/                   run_parameter_sweep, compute_ocv_hysteresis, voltage_summary
-|   `-- plotting/                   plot_voltage_soc, plot_voltage_time, plot_potential, plot_external_stress,
+|   `-- plotting/                   plot_voltage_soc, plot_voltage_time, plot_current_time, plot_potential, plot_external_stress,
 |                                   plot_phase_fraction, plot_filling_spread, plot_filling_ratio, plot_ocv_hysteresis,
 |                                   plot_gibbs_minimisers, plot_results_comparison, new_figure, make_fixed_figure
 |-- docs/solver_formulation.md      how the model is integrated in time
-|-- examples/                       example_01 ... example_08, run_all_examples
-|-- tests/                          test_thermodynamics, test_solver, test_examples, test_plotting, data/original_code_reference.mat
+|-- examples/                       example_01 ... example_09, run_all_examples
+|-- tests/                          test_thermodynamics, test_solver, test_cccv, test_examples, test_plotting, data/original_code_reference.mat
 `-- .github/workflows/tests.yml     runs the tests on every push
 ```
 
@@ -379,17 +412,19 @@ MechoCPM/
 | `example_06_critical_points_vs_Lambda` | Binodal (analytical and grid search) and spinodal points against `Lambda` (Fig. 2) |
 | `example_07_external_stress_comparison` | Ensemble with and without external stress (Figs. 4-7) |
 | `example_08_elastic_shell` | Elastic external medium: stiffness sweep, stress against filling, quasi-static curves |
+| `example_09_cccv` | Constant-current constant-voltage cycling with silicon-like cut-offs |
 
 ## Output
 
-`run_simulation` returns a struct with the time `t`, state of charge `SOC`, electrode potential `Phi`, applied current `I` and, per size group, `c_av`, `theta`, `jtr`, `sig_ext`, `mu` and phase state `s`, together with the `params` and `protocol` used, the number of phase-change events `n_events` and the `runtime`. With `verbose` on (the default) it also logs the electrode potential at the start and end of each block and its range over the run.
+`run_simulation` returns a struct with the time `t`, state of charge `SOC`, electrode potential `Phi`, applied current `I` (during a CV hold, the resulting current), the CV flag `cv` and, per size group, `c_av`, `theta`, `jtr`, `sig_ext`, `mu` and phase state `s`, together with the `params` and `protocol` used (`protocol.steps` lists every CC and CV step), the number of phase-change events `n_events` and the `runtime`. With `verbose` on (the default) it also logs the electrode potential at the start and end of each block and its range over the run.
 
 For the electrode potential:
 
 | Function | Output |
 |---|---|
 | `plot_voltage_soc(sols, labels)` | `Phi` [mV] against SoC |
-| `plot_voltage_time(sols, labels)` | `Phi` [mV] against time, with the protocol blocks marked |
+| `plot_voltage_time(sols, labels)` | `Phi` [mV] against time, with the protocol blocks (dotted) and CV holds (dashed) marked |
+| `plot_current_time(sols, labels)` | Current as a C-rate (`I*3600/Q`, negative while lithiating) against time |
 | `voltage_summary(sols, labels, soc_points)` | Prints, and returns, `Phi` on the lithiation and delithiation branches at the given SoC (default 0.25, 0.5, 0.75), the gap between them and the range of `Phi` |
 | `compute_ocv_hysteresis` | Single-particle branches (single phase with stable/metastable/unstable parts, mixed-phase line) and the lithiation and delithiation paths, as `mu` and `Phi` |
 | `plot_phase_fraction(sols, labels)` | Number fraction of phase-separated particles against SoC |

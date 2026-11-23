@@ -65,6 +65,16 @@ Phase changes are located with the same event function as before (`phase_change_
 
 Unlike `ode15i`, no consistent initial conditions are needed after an event or at the start of a block. `Phi` and `j` are not integrated, so they cannot become inconsistent with `(c, sig)`; they are recomputed at every evaluation.
 
+### Constant-voltage steps (CCCV)
+
+Under a CCCV protocol, step 1 changes during a constant-voltage hold. `Phi` is prescribed (`Phi = Phi_hold`), so no current-conservation solve is needed. Each `j_i = BV(c_i, s_i, Phi_hold, sig_i)` follows directly, and the total current `sum_i N_i A_i j_i` becomes an output. Steps 2 and 3, the state `y` and the phase-change events are unchanged (`reduced_rhs(..., step)` with `step.mode = 'CV'`).
+
+Two terminal protocol events are added to the phase-change events in `solve_block_ode15s`:
+- **CC step:** fires when `Phi`, recomputed by `solve_potential`, reaches the cut-off.
+- **CV step:** fires when `|sum_i N_i A_i j_i|` falls to `I_cutoff`.
+
+The switch from CC to CV is continuous in `Phi`, so no current ramp is needed there. The step after a hold starts its current ramp from the current at the end of the hold. CCCV is available only with `ode15s`.
+
 ## 5. Output
 
 The solution has the same layout as before. At each output time, `solve_block_ode15s` rebuilds `j` and `Phi` from `(c, sig)` with `solve_potential`, so `sol.Phi`, `sol.jtr` and the other fields of `run_simulation` are unchanged.

@@ -110,6 +110,32 @@ end
 if ~any(strcmpi(params.solver, {'ode15s', 'ode15i'}))
     error('MechoCPM:params', 'solver must be ''ode15s'' or ''ode15i''.');
 end
+if ~any(strcmpi(params.protocol_type, {'CC', 'CCCV'}))
+    error('MechoCPM:params', 'protocol_type must be ''CC'' or ''CCCV''.');
+end
+num(params.V_cutoff, 'V_cutoff', {'numel', 2, 'real', 'finite'});
+num(params.I_cutoff, 'I_cutoff', {'scalar', 'real', 'finite', 'positive'});
+if ~any(strcmpi(params.cv_hold, {'lith', 'delith', 'both', 'none'}))
+    error('MechoCPM:params', 'cv_hold must be ''lith'', ''delith'', ''both'' or ''none''.');
+end
+if ~isempty(params.cv_max_time)
+    num(params.cv_max_time, 'cv_max_time', {'scalar', 'real', 'positive'});
+end
+if strcmpi(params.protocol_type, 'CCCV')
+    if params.V_cutoff(1) >= params.V_cutoff(2)
+        error('MechoCPM:params', ...
+            'V_cutoff = [lithiation, delithiation] must have V_cutoff(1) < V_cutoff(2) [mV].');
+    end
+    if params.I_cutoff >= min(params.c_rate(:))
+        error('MechoCPM:params', ...
+            ['I_cutoff (C/%g) must be smaller than the constant current c_rate (C/%g), ' ...
+             'otherwise the CV hold ends at once. Use a faster c_rate or a smaller I_cutoff.'], ...
+            1/params.I_cutoff, 1/min(params.c_rate(:)));
+    end
+    if strcmpi(params.solver, 'ode15i')
+        error('MechoCPM:params', 'protocol_type ''CCCV'' needs solver ''ode15s''.');
+    end
+end
 if ~any(strcmpi(params.binodal_method, {'analytical', 'gridsearch', 'both'}))
     error('MechoCPM:params', ...
         'binodal_method must be ''analytical'', ''gridsearch'' or ''both''.');

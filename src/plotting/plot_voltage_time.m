@@ -1,7 +1,8 @@
 function ax = plot_voltage_time(sols, labels, ax)
 %PLOT_VOLTAGE_TIME Electrode potential Phi [mV] against time [h].
 %   PLOT_VOLTAGE_TIME(sol) or PLOT_VOLTAGE_TIME({sol1, sol2}, {'a', 'b'})
-%   Dotted vertical lines mark the protocol blocks of the first run.
+%   Dotted vertical lines mark the protocol blocks of the first run, and
+%   dashed lines the start of its constant-voltage holds (CCCV protocol).
 %
 %   See also PLOT_VOLTAGE_SOC, VOLTAGE_SUMMARY.
 if isstruct(sols), sols = {sols}; end
@@ -13,6 +14,13 @@ end
 t_split = sols{1}.protocol.t_split(2:end-1)/3600;
 for k = 1:numel(t_split)
     xline(ax, t_split(k), ':', 'Color', [0.5 0.5 0.5], 'HandleVisibility', 'off');
+end
+if isfield(sols{1}.protocol, 'steps')
+    for st = sols{1}.protocol.steps
+        if strcmp(st.mode, 'CV')
+            xline(ax, st.t_start/3600, '--', 'Color', [0.5 0.5 0.5], 'HandleVisibility', 'off');
+        end
+    end
 end
 xlabel(ax, 'Time [h]');
 ylabel(ax, '$\Phi$ [mV]', 'Interpreter', 'latex');

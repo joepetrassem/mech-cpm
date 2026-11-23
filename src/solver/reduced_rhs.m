@@ -1,4 +1,4 @@
-function [ydot, Phi, jtr] = reduced_rhs(t, y, s, Phi_guess, I, I_prev, t_block, params)
+function [ydot, Phi, jtr] = reduced_rhs(t, y, s, Phi_guess, I, I_prev, t_block, params, step)
 %REDUCED_RHS Right-hand side of the reduced ODE in (c_avg, sig_ext).
 %
 %   [ydot, Phi, jtr] = REDUCED_RHS(t, y, s, Phi_guess, I, I_prev, t_block, params)
@@ -17,13 +17,24 @@ function [ydot, Phi, jtr] = reduced_rhs(t, y, s, Phi_guess, I, I_prev, t_block, 
 %
 %   Phi_guess warm-starts the root finder (e.g. the Phi of the previous call).
 %
+%   REDUCED_RHS(..., params, step) with step.mode = 'CV' holds the potential
+%   at step.Phi_hold instead (constant-voltage step of a CCCV protocol): step 1
+%   is skipped, jtr_i follows directly from Butler-Volmer at Phi_hold, and the
+%   total current sum_i N_i*A_i*jtr_i becomes an output. Any other step (or
+%   none) is a constant-current step.
+%
 %   See also SOLVE_BLOCK_ODE15S, DAE_RESIDUAL.
 
 n       = params.n_groups;
 c_av    = y(1:n);
 sig_ext = y(n+1:2*n);
 
-[Phi, jtr] = solve_potential(t, c_av, s, sig_ext, Phi_guess, I, I_prev, t_block, params);
+if nargin >= 9 && ~isempty(step) && strcmp(step.mode, 'CV')
+    Phi = step.Phi_hold;
+    jtr = exchange_current(c_av, s(:), Phi, sig_ext, params);
+else
+    [Phi, jtr] = solve_potential(t, c_av, s, sig_ext, Phi_guess, I, I_prev, t_block, params);
+end
 c_dot   = -jtr.*params.Apart./(params.F*params.Vol);
 sig_dot = solve_stress_rate(sig_ext, c_dot, params);
 ydot    = [c_dot; sig_dot];
