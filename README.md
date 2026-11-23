@@ -87,7 +87,7 @@ What to expect from each example:
 | `example_05_ocv_hysteresis` | 1 s | Paper Fig. 3a,b: single-phase (dark blue) and mixed-phase (blue) solution branches for `Lambda = 0` (flat mixed-phase line) and `Lambda = 0.99` (sloped line). Fig. 3c,d: lithiation and delithiation paths for `Lambda = 0` and `Lambda = 0.99`, each with `sig_ext = -0.6` (red), 0 (black), 0.6 (blue): single phase up to the spinodal point (metastable beyond the binodal point), a vertical jump onto the mixed-phase line, phase separation to the far binodal point, the unstable single-phase states dotted, and arrowheads tangent to the paths showing the direction of charge. Also `Lambda = 2 > Lambda_c`, where there is no phase separation and both paths follow `mu_chem - sig_ext`. Prints `c_b = [0.0707 0.9293]`, `c_sp = [0.2113 0.7887]` and jumps in mu of -0.415 / +0.415 for `Lambda = 0`; `c_b = [0.1570 0.8430]`, `c_sp = [0.2857 0.7143]` and jumps of -0.134 / +0.134 for `Lambda = 0.99`; and the equilibrium potentials at c_avg = 0.5, which shift by about +-15.5 mV for `sig_ext = -+0.6` |
 | `example_06_critical_points_vs_Lambda` | seconds | Paper Fig. 2: spinodal and binodal points against `Lambda`, with `Lambda_c = 1.8` marked; prints the largest analytical vs grid-search difference (below 1e-3) |
 | `example_07_external_stress_comparison` | several minutes | Paper Figs. 4/6 (filling ratio of each particle group), Fig. 7 (electrode potential against SoC with and without external stress, `Lambda = 1.32`, `sigma_y = 0.8`), the electrode potential against time and the external stress of each particle. With these values the stress takes `Delta c` of about 0.48 to switch after the reversal, so the full gap increase of about 41 mV (`2*0.8*R_g*T/F`) is only reached on the second half of delithiation; the script prints the gap increase at SoC = 0.25, 0.5 and 0.75 |
-| `example_09_cccv` | seconds | CCCV cycling at C/5 with the default (silicon-like) cut-offs: electrode potential and current against time for constant current only, CCCV with a hold after lithiation, and CCCV with holds after both; the potential stays at -50 mV (or +70 mV) during each hold while the current decays to C/20. Prints the potential summary and a table of every CC and CV step (duration, SoC at its start and end, final current) |
+| `example_09_cccv` | seconds | CCCV cycling at C/5 with the default (silicon-like) cut-offs: electrode potential and current against time for constant current only, CCCV with a hold after lithiation, and CCCV with holds after both; the potential stays at -50 mV (or +70 mV) during each hold while the current decays to C/40. Prints the potential summary and a table of every CC and CV step (duration, SoC at its start and end, final current) |
 | `example_08_elastic_shell` | about a minute | Electrode potential against SoC and time for an elastic shell with `k_e` = 0, 2, 10 and `Inf` (rigid), `Lambda = 0.99`: the curves tilt more steeply as `k_e` grows, with no extra gap between lithiation and delithiation. Prints `K_eff` for each run and confirms `sig_ext = -K_eff*(c_avg - c_form)` for every particle; plots the stress against `c_avg` and the quasi-static curves with and without the shell |
 
 **3. A quick check by hand.** With no mechanics the binodal points are the classical regular-solution values:
@@ -137,9 +137,9 @@ Names are case-insensitive, misspelt names raise an error listing the valid ones
 | `N_total` | 1e13 | Total number of particles N (only rescales capacity and current) |
 | `rest_time` | 100 s | Open-circuit rest before cycling |
 | `V_cutoff` | `[-50 70]` mV | CCCV: cut-off potentials `[lithiation, delithiation]`, relative to the reference of `mu_chem` |
-| `I_cutoff` | 0.05 (C/20) | CCCV: the constant-voltage hold ends when `|I|` falls below this C-rate; must be smaller than `c_rate` |
+| `I_cutoff` | 0.025 (C/40) | CCCV: the constant-voltage hold ends when `|I|` falls below this C-rate; must be smaller than `c_rate` |
 | `cv_hold` | `'lith'` | CCCV: constant-voltage hold after `'lith'`, `'delith'`, `'both'` or `'none'` |
-| `cv_max_time` | `[]` (auto) | CCCV: longest constant-voltage hold [s]; empty means `3600/I_cutoff` (20 h for C/20) |
+| `cv_max_time` | `[]` (auto) | CCCV: longest constant-voltage hold [s]; empty means `3600/I_cutoff` (40 h for C/40) |
 | `c_form` | `[]` (auto) | Elastic shell: filling fraction at which the shell was formed stress-free; empty means the initial filling `soc_waypoints(1)` |
 | `k` | 0.01 1/s | Plastic shell: relaxation rate of the external stress |
 | `u0` | `[]` (auto) | Plastic shell: reference surface velocity in `sigma_ideal` [1/s]. Empty: `0.05*min(c_rate)/3600`, 5% of the nominal swelling rate (stored as `u0_used`). The shell acts as rigid-plastic when `u0` is much smaller than the swelling rate and `Lambda*(1+3*nu_bar)*u0` much smaller than `k*sigma_y`; `run_simulation` warns if not. Much smaller values make the switch very sharp, which slows the integration (and can stop `ode15i`) |
@@ -188,12 +188,12 @@ By default (`protocol_type = 'CC'`) the current is constant between the SoC wayp
 ```matlab
 sol = run_simulation('protocol_type', 'CCCV', 'c_rate', 0.2, ...   % CC at C/5
     'soc_waypoints', [0.01, 0.999, 0.001], ...                     % backstops near 0 and 1
-    'V_cutoff', [-50, 70], 'I_cutoff', 0.05, 'cv_hold', 'lith');   % defaults shown
+    'V_cutoff', [-50, 70], 'I_cutoff', 0.025, 'cv_hold', 'lith');   % defaults shown
 plot_voltage_time(sol);    % dashed lines mark the start of each CV hold
-plot_current_time(sol);    % current as a C-rate: the CV tail decays to C/20
+plot_current_time(sol);    % current as a C-rate: the CV tail decays to C/40
 ```
 
-The default values follow a typical silicon half-cell. There, lithiation runs at constant current to about 10 mV vs Li, just past the lithiation plateau and above lithium plating. A CV hold then follows until the current falls to C/20-C/50. Delithiation runs at constant current to about 1 V, well past the plateau, with no hold. Here, `V_cutoff(1) = -50 mV` ends the CC step shortly before full lithiation, so the hold supplies the last few per cent. `V_cutoff(2) = +70 mV` lets delithiation run almost to empty. `I_cutoff = 0.05` is C/20.
+The default values follow a typical silicon half-cell. There, lithiation runs at constant current to about 10 mV vs Li, just past the lithiation plateau and above lithium plating. A CV hold then follows until the current falls to C/20-C/50. Delithiation runs at constant current to about 1 V, well past the plateau, with no hold. Here, `V_cutoff(1) = -50 mV` ends the CC step shortly before full lithiation, so the hold supplies the last few per cent. `V_cutoff(2) = +70 mV` lets delithiation run almost to empty. `I_cutoff = 0.025` (C/40) sits in that range.
 
 How to choose the values:
 

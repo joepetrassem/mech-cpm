@@ -7,7 +7,7 @@
 %
 % The defaults mimic a typical silicon half-cell: lithiation at constant
 % current to a cut-off just past the plateau (V_cutoff(1) = -50 mV), then a
-% CV hold until |I| < C/20; delithiation at constant current to a cut-off well
+% CV hold until |I| < C/40; delithiation at constant current to a cut-off well
 % past the plateau (V_cutoff(2) = +70 mV) with no hold. Potentials are
 % relative to the reference of mu_chem (0 mV is the plateau of the paper's
 % mu_chem), not cell voltages.

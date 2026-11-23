@@ -41,7 +41,7 @@ for st = sol.protocol.steps(strcmp({sol.protocol.steps.mode}, 'CV'))
     in = find(sol.cv & sol.t >= st.t_start & sol.t <= st.t_end);
     I = abs(sol.I(in));
     verifyGreaterThan(testCase, I(1), 2*I_cut);                 % starts near C/5
-    verifyEqual(testCase, I(end), I_cut, 'RelTol', 1e-3);         % ends at C/20
+    verifyEqual(testCase, I(end), I_cut, 'RelTol', 1e-3);         % ends at C/40
     verifyLessThanOrEqual(testCase, max(diff(I)), 1e-3*I_cut);    % decays monotonically
 end
 end
@@ -78,5 +78,5 @@ verifyError(testCase, @() set_parameters(p, 'protocol_type', 'CCCV', 'c_rate', 0
     'solver', 'ode15i'), id);
 q = set_parameters(p, 'protocol_type', 'CCCV', 'c_rate', 0.2);
 verifyEqual(testCase, q.V_cutoff, [-50, 70]);
-verifyEqual(testCase, q.I_cutoff, 0.05);
+verifyEqual(testCase, q.I_cutoff, 0.025);
 end

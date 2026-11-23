@@ -79,12 +79,12 @@ params.rest_time     = 100;                % open-circuit rest before cycling [s
 % (or the SoC waypoint, whichever comes first), then, if cv_hold covers that
 % direction, holds Phi at the cut-off until |I| falls to I_cutoff. Defaults
 % follow a typical silicon half-cell: a lithiation cut-off just past the
-% plateau followed by a CV hold to C/20, and a delithiation cut-off well past
+% plateau followed by a CV hold to C/40, and a delithiation cut-off well past
 % the plateau with no hold. Phi is relative to the reference of mu_chem
 % (0 mV is the plateau of the paper's mu_chem), not a cell voltage.
 params.protocol_type = 'CC';               % 'CC' (default) or 'CCCV'
 params.V_cutoff      = [-50, 70];          % CCCV: cut-off potentials [lithiation, delithiation] [mV]
-params.I_cutoff      = 0.05;               % CCCV: end the CV hold when |I| < I_cutoff [C-rate]
+params.I_cutoff      = 0.025;              % CCCV: end the CV hold when |I| < I_cutoff [C-rate]
 params.cv_hold       = 'lith';             % CCCV: CV hold after 'lith', 'delith', 'both' or 'none'
 params.cv_max_time   = [];                 % CCCV: longest CV hold [s]; empty: 3600/I_cutoff
 
